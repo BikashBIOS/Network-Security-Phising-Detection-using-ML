@@ -125,4 +125,14 @@ Validate data based upon:
 
 
 ## Data Validation Initiation
-1. 
+1. Load the training and test data with their filepath. 
+2. status checks the no. of columns defined in our schema on the training and testing data. 
+3. Then we need to check the data drift - compares the distribution of the test data against the training data to see if the statistical properties have shifted significantly. Result would be stored as True or False. 
+4. Store the validated data in the new folder path. 
+5. Save the trained and test data frames as CSV in the path. 
+6. Create Data Validation Artifact which checks the Status based on the Training and Test data. If the data drift is detected and then store the data in the specific path. 
+7. To run this data validation, go to main.py -> Initialize the data validation config and data validation (pass the data validation config and data ingestion artifact).
+8. At last, then initialize the data validation artifact by calling the initiate_data_validation(). 
+
+
+## 
