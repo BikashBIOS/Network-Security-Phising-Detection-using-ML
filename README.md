@@ -122,3 +122,7 @@ Validate data based upon:
 5. Create main_utils folder in utils > Add __init__.py and utils.py in it. Now add the code in utils.py for reading yaml file. 
 6. Create data_validation.py, then write code below:
 - initialize dataingestionartifact and datavalidationartifact and then read the schema file. 
+
+
+## Data Validation Initiation
+1. 
