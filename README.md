@@ -135,4 +135,22 @@ Validate data based upon:
 8. At last, then initialize the data validation artifact by calling the initiate_data_validation(). 
 
 
-## 
+## Data Transformation
+1. Add the class DataTransformationConfig in the config_entity.py.
+2. Add the dataclass Data Transformation Artifact in artifact_entity.py
+3. Add the Data Transformation related costants in constants>training_pipeline>__py_cache__>__init__.py
+4. Add the new functions - save_numpy_array_data(), save_object(), load_object() and load_numpy_array_data() in utils>utils.py
+5. Now create a new data_transformation.py file and write the code there. 
+6. Load the Validated Data: Load the training and test DataFrames using the file paths provided by the DataValidationArtifact.
+7. Feature and Target Separation: Separate the features from the target column for both training and testing datasets by dropping the TARGET_COLUMN.
+8. Target Label Cleaning: Replace the target labels (specifically converting -1 to 0) to ensure the target feature is in a standard format for the model.
+9. Initialize Preprocessing Object: Create a get_data_transformer_object which initializes a KNNImputer using parameters defined in your constants. This pipeline handles missing values by estimating them based on the "nearest neighbors" in the data.
+10. Fit and Transform:
+Fit the preprocessor on the training features to learn the imputation patterns.
+Apply the transformation to both the training and testing feature sets.
+11. Data Recombination: Combine the transformed features back with their respective target columns using np.c_ to create final training and testing arrays.
+12. Artifact Storage:
+Save the transformed training and testing data as NumPy arrays (.npy) in the designated folder.
+Save the preprocessor object as a pickle file (.pkl) so it can be reused during model prediction/deployment.
+13. Create Data Transformation Artifact: Generate an artifact containing the paths to the transformed data and the saved preprocessor object.
+14. Execution via main.py: To run this component, initialize the DataTransformationConfig and DataTransformation class (passing the config and the DataValidationArtifact), then call the initiate_data_transformation() method.
