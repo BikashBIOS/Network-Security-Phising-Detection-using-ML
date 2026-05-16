@@ -154,3 +154,23 @@ Save the transformed training and testing data as NumPy arrays (.npy) in the des
 Save the preprocessor object as a pickle file (.pkl) so it can be reused during model prediction/deployment.
 13. Create Data Transformation Artifact: Generate an artifact containing the paths to the transformed data and the saved preprocessor object.
 14. Execution via main.py: To run this component, initialize the DataTransformationConfig and DataTransformation class (passing the config and the DataValidationArtifact), then call the initiate_data_transformation() method.
+
+
+## Model Trainer
+1. Define ModelTrainerConfig class in config_entity.py
+2. Create Model Trainer constants DIR NAME in constants>training pipeline> __init__.py
+3. Add 2 data class - Classification Metrics and Model Trainer Artifacts in artifact_entity.py
+4. Create load_object and load_numpy_array_data functions in utils.py
+5. Create 2 folders - metric and model in utils folder.
+6. Create classification_metric in metric folder and write the function to get the classification score like recall, f1 score, precision score.
+7. Create estimator.py in model folder of utils > Then write the code for prediction. (Ensure you use SAVED_MODEL and MODEL FILE NAME in __init__.py > constants)
+8. Create model_trainer.py in components and write the following code:
+9. Create Model Trainer class with model trainer config and data transformation artifact.
+10. Create the inititate_model_training() and pass the train and test data. Then divide into X and y.
+11. Then create train_model() to load the models, apply hyperparameter tuning. 
+12. Then pass these values in the evaluate_model() > We can configure this function in the utils.py.
+13. Find the best model with the code.
+14. Then get the classification score for both test and train. 
+15. Load the object and model in the designed path 
+16. Then make your Network Model using your best model and preprocessor and then save your object in the pickle .pkl file. 
+16. Then make the ModelTrainerArtifact and return it. 
