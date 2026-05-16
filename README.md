@@ -156,7 +156,7 @@ Save the preprocessor object as a pickle file (.pkl) so it can be reused during 
 14. Execution via main.py: To run this component, initialize the DataTransformationConfig and DataTransformation class (passing the config and the DataValidationArtifact), then call the initiate_data_transformation() method.
 
 
-## Model Trainer
+## Model Trainer (along with MLFlow and Dagshub)
 1. Define ModelTrainerConfig class in config_entity.py
 2. Create Model Trainer constants DIR NAME in constants>training pipeline> __init__.py
 3. Add 2 data class - Classification Metrics and Model Trainer Artifacts in artifact_entity.py
@@ -171,6 +171,18 @@ Save the preprocessor object as a pickle file (.pkl) so it can be reused during 
 12. Then pass these values in the evaluate_model() > We can configure this function in the utils.py.
 13. Find the best model with the code.
 14. Then get the classification score for both test and train. 
-15. Load the object and model in the designed path 
+15. Load the object and model in the designed path using load_object() and load numpy array().
 16. Then make your Network Model using your best model and preprocessor and then save your object in the pickle .pkl file. 
 16. Then make the ModelTrainerArtifact and return it. 
+17. Create the track_mlflow() -> to execute the classification score, f1 score, precision score and recall score.
+18. Then apply this function to your best model to calculate the scores in the MLFlow. 
+19. In terminal, run "mlflow ui" -> to generate a link - where you can access MLFlow website to view your data.
+20. Then we can mention Dagshub -> Go to Dagshub -> Login by Github -> Create the repository from your exisiting Github repo and then go to Experiments tab -> Copy the import dagshub and your repository line in your model_trainer.py file. (import dagshub)
+21. Then run python main.py -> To execute the training process for the model training and then it will be saved into your dagshub. 
+22. In the 'Experiments' tab -> we can see the 2 models created -> Then we can compare the 2 models and see the classification scores and graphs. 
+23. Based on your best model, the model.pkl will be saved in final_model folder and the preprocessing.pkl file will also be based from data_transformation.py
+
+
+## 
+
+
