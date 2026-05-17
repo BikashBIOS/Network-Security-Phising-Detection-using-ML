@@ -1,0 +1,6 @@
+[ 2026-05-17 16:16:03,906 ] 1025 httpx - INFO - HTTP Request: GET https://dagshub.com/api/v1/user "HTTP/1.1 200 OK"
+[ 2026-05-17 16:16:03,938 ] 107 dagshub - INFO - Accessing as BikashBIOS
+[ 2026-05-17 16:16:05,589 ] 1025 httpx - INFO - HTTP Request: GET https://dagshub.com/api/v1/repos/BikashBIOS/Network-Security "HTTP/1.1 200 OK"
+[ 2026-05-17 16:16:07,244 ] 1025 httpx - INFO - HTTP Request: GET https://dagshub.com/api/v1/user "HTTP/1.1 200 OK"
+[ 2026-05-17 16:16:07,249 ] 107 dagshub - INFO - Initialized MLflow to track repo "BikashBIOS/Network-Security"
+[ 2026-05-17 16:16:07,251 ] 107 dagshub - INFO - Repository BikashBIOS/Network-Security initialized!

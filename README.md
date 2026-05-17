@@ -262,5 +262,65 @@ Ultimately returns the final model_trainer_artifact.
 12. Click on try it out > Upload your test.csv > Then click on execute > If successfully executed, then you can see the full data in the table format there > And you can verify there will be a predicted_output folder with the output.csv in your project with an additional predicted_column in the file. 
 
 
+## Pushing Final Models & Artifacts to S3 AWS
+1. Create s3_syncer.py in networksecurity > cloud folder. 
+2. Write the code for the commands to run in AWS CLI.
+3. Then write 2 functions to sync artifacts and saved models to s3 in training_pipeline.py:
+4. Artifact Directory Synchronization (sync_artifact_dir_to_s3)
+-> Purpose: Uploads the entire intermediate data history (ingested data, validated data, drift reports, transformation objects) to the cloud.
+-> Logic: Constructs a target S3 cloud URL pointing to a subfolder named /artifact/ appended with the unique pipeline runtime timestamp.
+-> Execution: Calls the s3_sync.sync_folder_to_s3() utility to push the local artifact_dir folder to that specific S3 destination.
+5. Saved Model Synchronization (sync_saved_model_dir_to_s3)
+-> Purpose: Specifically pushes the final, production-ready trained model files to AWS S3 so they can be pulled later for deployments or production APIs.
+-> Logic: Constructs an S3 cloud URL pointing to a subfolder named /final_model/, also organized by the pipeline's runtime timestamp.
+-> Execution: Instructs the sync utility to copy the contents of the local model storage path (model_dir) up to the designated S3 bucket location.
+-> Call both the functions in run_pipeline().
+6. Remember to initiate TRAINING_BUCKET_NAME in in the __init__.py
 
 
+
+## PUSH DATA TO AWS S3
+1. Download AWS CLI. 
+2. Open your AWS Console.
+3. Go to IAM.
+4. Create a new user - testsecurity.
+5. Next > Attach Policies directly > Select Administrator Access.
+6. Create user.
+7. Then open your user > Go to Access keys > go to Security Credentials > Create Access Keys
+8. Select CLI > Next > Create access key.
+9. Copy the Key and password.
+10. Now go to your Project Terminal > aws configure > Give the access key Id and then the password. 
+11. Go to S3 > Create bucket > Bucket name > Create bucket (Bucket Name should be equal to the TRAINING_BUCKET_NAME in our __init__.py)
+12. Then run uvicorn app:app --reload
+13. If executed successfully, we will find the artifacts and final_models folders in S3 bucket.
+14. Now, we can also run our program via "python main.py" - it will run the uvicorn command also.
+
+
+## DEPLOYMENT TO AWS EC2 INSTANCE
+1. To deploy the full project into EC2 Instance. 
+2. So, we need to convert the NetworkSecurity Project into a Docker Image. 
+3. This Docker Image can be uploaded in AWS ECR.
+4. Then we will deploy this whole in the EC2 Instance.
+NOTE - This whole process will require GitHub Actions via CI-CD Pipelines and App Runners. 
+
+### Github Action Process :
+1. In the Dockerfile, write the following code to specify python3 version and run the app.py
+2. In .github/workflows folder > main.yaml, we need to edit the code. 
+3. Add the name: , on: and jobs: tags in main.yaml file and push the code. 
+4. Then we can see in the Actions tab of your github repository, your continuous integration action with all the functions running. 
+
+
+### ECR AWS 
+1. Go to ECR -> Create repository -> give name and create.
+2. Copy the URI.
+3. Copy the Code for build and push ecr image from main.yaml file. 
+4. Provide aws access key id and password (HOW TO GET THIS):
+5. Go to IAM User -> Generate teh access key id and password.
+6. Come to Github -> Secrets and Variable -> Actions -> New repository secret -> 
+7. AWS ACCESS KEY ID -> Provide the Aws access key id. and add.
+8. AWS SECRET ACCESS KEY -> Provide the password and add.
+9. AWS REGION -> Provide the region.
+10. AWS ECR LOGIN URI -> Paste the URI
+11. ECR REPOSITORY NAME -> Name of the ecr repository.
+12. Push the changed code to github. 
+13. Also add the Build, tag and push image to Amazon ECR into main.yaml
