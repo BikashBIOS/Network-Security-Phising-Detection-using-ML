@@ -342,5 +342,12 @@ NOTE - This whole process will require GitHub Actions via CI-CD Pipelines and Ap
 6. Click on New self hosted Runner. 
 7. Click on Linux. 
 8. Execute the 4 codes mentioned there one by one in EC2 CLI.
-9. 
+9. Then execute the next 2 codes below that. 
+10. While prompted, enter runner name as "self-hosted" (as we mentioned it in main.yaml Continuous Deployment).
+11. Then ./run.sh
+12. Then you can see your self hosted runner being Idle in the runners section of Github. 
+13. Now change the host = "0.0.0.0" in the app.py. 
+14. Commit and Push the Code to Github. 
+15. Now you can see the Pipeline of Continuous Integration > Continuous Delivery > Continuous Deployment. 
+16. If executed successfully, you can see tick marks in 3 sections. 
 
