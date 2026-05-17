@@ -350,4 +350,6 @@ NOTE - This whole process will require GitHub Actions via CI-CD Pipelines and Ap
 14. Commit and Push the Code to Github. 
 15. Now you can see the Pipeline of Continuous Integration > Continuous Delivery > Continuous Deployment. 
 16. If executed successfully, you can see tick marks in 3 sections. 
-
+17. Then go to Security groups of Instance and add another Custom TCP of 0.0.0.0 with Port 8080.
+18. Save it and then open the instance and copy the Public IpV4 address and open it in the browser.
+19. Add :8080 to the ip address and open -> FastAPI screen will open and you can train and predict the data. 
