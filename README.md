@@ -183,6 +183,84 @@ Save the preprocessor object as a pickle file (.pkl) so it can be reused during 
 23. Based on your best model, the model.pkl will be saved in final_model folder and the preprocessing.pkl file will also be based from data_transformation.py
 
 
-## 
+## PIPELINE of Model Training
+1. Create 2 py files - batch_prediction and training_pipeline in 'pipeline' folder.
+2. Start writing code in training_pipeline.py : 
+3. Initialization (__init__)
+Sets up the base TrainingPipelineConfig, which holds the global configurations needed across the entire pipeline.
+4. Stage 1: Data Ingestion (start_data_ingestion)
+Action: Fetches or loads the raw data.
+Process: Initializes DataIngestion using its specific config.
+Output: Returns a DataIngestionArtifact (contains paths to the train and test files).
+5. Stage 2: Data Validation (start_data_validation)
+Input: Requires the DataIngestionArtifact from Stage 1.
+Action: Checks the ingested data for structural integrity and data drift.
+Output: Returns a DataValidationArtifact (contains paths to validated, clean data).
+4. Stage 3: Data Transformation (start_data_transformation)
+Input: Requires the DataValidationArtifact from Stage 2.
+Action: Applies feature engineering, scaling, or encoding to prepare the data for the algorithm.
+Output: Returns a DataTransformationArtifact (contains paths to the transformed data and preprocessing objects).
+5. Stage 4: Model Training (start_model_trainer)
+Input: Requires the DataTransformationArtifact from Stage 3.
+Action: Trains the actual machine learning model using the prepared data.
+Output: Returns a ModelTrainerArtifact (contains paths to the final trained model and performance metrics).
+6. Master Orchestration (run_pipeline)
+This is the main trigger function. It executes Stages 1 through 4 in sequential order.
+It automatically handles passing the artifact from one step directly into the next step.
+Ultimately returns the final model_trainer_artifact.
+
+
+## APP.PY - To execute all the above functions in our Frontend by creating APIs.
+1. Create app.py in your main/root folder.
+2. Install fastapi and uvicorn libraries.
+3. Start writing code in app.py : 
+4. Database Connection & Setup :
+-> Initializes a MongoDB client connection (pymongo.MongoClient) using a secure database URL and a TLS certificate (tlsCAFile=ca) to encrypt the connection.
+-> Targets a specific database and collection dynamically using predefined constants (DATA_INGESTION_DATABASE_NAME and DATA_INGESTION_COLLECTION_NAME).
+5. FastAPI App Initialization
+-> Instantiates the web application object with app = FastAPI().
+6. CORS Middleware Configuration
+-> Registers CORSMiddleware with origins = ["*"] (wildcard). This permits frontend applications hosted on any domain or port to securely communicate with this backend API, allowing all HTTP methods and headers.
+7. Root Route Redirect (/)
+-> Defines a basic GET endpoint for the root URL (/).
+-> Automatically redirects users to /docs, which is FastAPI's built-in interactive Swagger UI documentation page where all available APIs can be tested.
+8. Model Training Route (/train)
+-> Exposes an asynchronous GET endpoint at /train to kick off the ML pipeline.
+-> Logic: Instantiates the TrainingPipeline object and calls its run_pipeline() method to execute data ingestion, validation, transformation, and training.
+-> Success Response: Returns "Training is successful" if the pipeline finishes without crashing.
+9. Now initialize the main function to execute the app.py
+10. Run "uvicorn app:app --reload" in terminal to execute the app.py in your localhost.
+11. Open Localhost link -> Go to default/train and execute it. 
+12. After you execute, the full project will start training and new train and test experiments models will be created to compare in Dagshub. 
+
+
+## Batch Prediction PIPELINE
+1. Create templates folder > tables.html > Write the prewritten html code.
+2. Create valid_data folder > paste the test.csv (data in which you want to predict via your model)
+3. Now add the following code for /predict in app.py:
+4. Template Engine Initialization
+-> Sets up Jinja2Templates to look into the ./templates folder, allowing FastAPI to serve and render dynamic HTML files.
+5. File Upload and Data Loading
+-> Exposes a POST route at /predict that accepts a user-uploaded file via UploadFile.
+-> Reads the incoming raw uploaded file straight into a Pandas DataFrame using pd.read_csv(file.file).
+6. Model Loading and Wrapper Initialization
+-> Deserializes and loads two critical components from the local disk (final_model/ directory) using a helper function load_object():
+-> The feature preprocessing object (preprocessor.pkl).
+-> The trained machine learning classification/regression algorithm (model.pkl).
+-> Binds both items together inside a custom wrapper class named NetworkModel.
+7. Prediction Logic
+-> Passes the entire DataFrame into the network_model.predict(df) method to generate model inferences (y_pred).
+-> Appends these results back into the original data by creating a brand-new column named predicted_column.
+8. Output Persistence (File Saving)
+-> Ensures the target folder prediction_output exists via os.makedirs(..., exist_ok=True).
+-> Saves the newly updated DataFrame containing the predictions as a CSV file locally (prediction_output/output.csv) without keeping the DataFrame row index.
+9. HTML Presentation and Rendering
+-> Converts the entire Pandas DataFrame into a raw HTML table string via df.to_html(), applying Bootstrap styling classes (table table-striped) for a polished frontend appearance.
+-> Returns a TemplateResponse targeting "tables.html" (Note: ensure your file is named tables.html with an 's' to match this line). It safely injects both the HTTP request context and the generated table_html string into the webpage template.
+10. Now run uvicorn app:app --reload to run it in your local machine. 
+11. Now you can see the /predict section in your page. 
+12. Click on try it out > Upload your test.csv > Then click on execute > If successfully executed, then you can see the full data in the table format there > And you can verify there will be a predicted_output folder with the output.csv in your project with an additional predicted_column in the file. 
+
+
 
 
