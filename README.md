@@ -296,7 +296,7 @@ Ultimately returns the final model_trainer_artifact.
 14. Now, we can also run our program via "python main.py" - it will run the uvicorn command also.
 
 
-## DEPLOYMENT TO AWS EC2 INSTANCE
+## DEPLOYMENT TO AWS ECR
 1. To deploy the full project into EC2 Instance. 
 2. So, we need to convert the NetworkSecurity Project into a Docker Image. 
 3. This Docker Image can be uploaded in AWS ECR.
@@ -310,7 +310,7 @@ NOTE - This whole process will require GitHub Actions via CI-CD Pipelines and Ap
 4. Then we can see in the Actions tab of your github repository, your continuous integration action with all the functions running. 
 
 
-### ECR AWS 
+### ECR AWS - Docker Image Creation
 1. Go to ECR -> Create repository -> give name and create.
 2. Copy the URI.
 3. Copy the Code for build and push ecr image from main.yaml file. 
@@ -320,7 +320,27 @@ NOTE - This whole process will require GitHub Actions via CI-CD Pipelines and Ap
 7. AWS ACCESS KEY ID -> Provide the Aws access key id. and add.
 8. AWS SECRET ACCESS KEY -> Provide the password and add.
 9. AWS REGION -> Provide the region.
-10. AWS ECR LOGIN URI -> Paste the URI
+10. AWS ECR LOGIN URI -> Paste the URI (Don't copy the repo name attached to it)
 11. ECR REPOSITORY NAME -> Name of the ecr repository.
-12. Push the changed code to github. 
-13. Also add the Build, tag and push image to Amazon ECR into main.yaml
+12. Add the Build, tag and push image to Amazon ECR into main.yaml
+13. Push the code to github and go to Actions > You can see the CI-CD pipeline running.
+14. If the execution is successful, then tick marks would be there and mainly you can see the Docker Image being created in your ECR AWS. (latest is our docker image name).
+
+
+## Pushing ECR to EC2 Instance
+1. Add Continuous Deployment code in the main.yaml file. 
+2. Go to EC2 in Console > Launce an Instance > Give the name > Select Ubuntu > Select the t3.micro (depends upon choice) > Create Instance. 
+3. After creating > click on instance id > Connect > Connect via Public IP > Amazon CLI opens.
+4. Now we have to write some preinstallation Docker Setup in EC2 Commands : 
+-> sudo apt-get update -y
+-> sudo apt-get upgrade
+-> curl -fsSL https://get.docker.com -o get-docker.sh
+-> sudo sh get-docker.sh
+-> sudo usermod -aG docker ubuntu
+-> newgrp docker
+5. After running all the codes, come to Github repo > Settings > Actions > Runners
+6. Click on New self hosted Runner. 
+7. Click on Linux. 
+8. Execute the 4 codes mentioned there one by one in EC2 CLI.
+9. 
+
