@@ -353,3 +353,17 @@ NOTE - This whole process will require GitHub Actions via CI-CD Pipelines and Ap
 17. Then go to Security groups of Instance and add another Custom TCP of 0.0.0.0 with Port 8080.
 18. Save it and then open the instance and copy the Public IpV4 address and open it in the browser.
 19. Add :8080 to the ip address and open -> FastAPI screen will open and you can train and predict the data. 
+
+
+## To Run this Project Finally : 
+1. Open this project in VS code. 
+2. Open the venv env. 
+3. Run "uvicorn app:app --reload"
+4. Open the local host link in browser. 
+5. Click on train -> Execute
+6. Execution starts in the vs code. 
+7. After Execution, you can see a successful response in train in Fast API.
+8. Then click on predict -> try it out -> Select the test.csv file in valid_data.
+9. Then execute.
+10. Prediction happens in vs code. 
+11. Then the same test.csv gets generated with a new column 'predicted_column' in prediction_output folder/output.csv.
