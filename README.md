@@ -1,369 +1,1201 @@
-# Network Security Project for Phising Data
+# 🛡️ Network Security — Phishing Detection ML System
 
-## Requirements & GitHub
-1. Create new env -- python -m venv venv
-2. Create files - requirements.txt, .gitignore, setup.py, .github/workflows/main.yaml, Dockerfile, .env
-3. Create folders as per the project requirement :
-- Network_Data - for your data (added phisingdata.csv)
-- networksecurity - for your main codes(src)
-- notebooks - for your jupyter notebooks
-4. Specify your libraries in the requirements.txt and then run pip install -r requirements.txt
-5. Write venv and .env files in the .gitignore for the git to ignore all these files while pushing the code to our github repo.
-6. Create a new github repo - Network Security and then push the code : 
-- git init
-- git add .
-- git commit -m "First commit"
-- git branch -M main
-- git remote add origin https://github.com/BikashBIOS/Network-Security.git
-- git push -u origin main
-7. Remember to add __init__.py in all the folders. Push again.
+A **production-grade, end-to-end Machine Learning project** built for network security. The system ingests raw phishing data from **MongoDB**, runs it through a full **ETL + ML pipeline** (data ingestion → validation → transformation → model training), tracks experiments on **MLflow + DagHub**, serves predictions via a **FastAPI** web server, and deploys to **AWS EC2** via a fully automated **CI/CD pipeline** using GitHub Actions, Docker, and AWS ECR.
 
+> 🧑‍💻 **Author:** [BikashBIOS](https://github.com/BikashBIOS)
+> 📦 **Repo:** [Network-Security](https://github.com/BikashBIOS/Network-Security)
 
-## Setup.py 
-1. Specify the code in setup.py to get the libraries from requirements.txt
-2. Specify the version, package info and retrieve from get_requirements()
-3. After executing pip install -r requirments.txt, you can see your package folder getting created with all the info and requirements. 
+---
 
+## 📌 What This Project Does
 
-## Logging and Exception
-1. Create the logging and Exception file as per the generic code of logging and exception.
-2. __main__ file in exception can be used to test if exception is working fine or not. 
+Given a CSV of network/URL features, the ML model classifies whether each record represents a **phishing attempt (1)** or a **legitimate connection (0)**. The full system flow is:
 
+```
+[PhishingData CSV]
+      ↓
+[MongoDB Atlas — cloud database]
+      ↓
+[Data Ingestion → Validation → Transformation → Model Training]
+      ↓
+[MLflow / DagHub — experiment tracking]
+      ↓
+[FastAPI Server — /train and /predict endpoints]
+      ↓
+[Docker Image → AWS ECR → AWS EC2 — production deployment]
+```
 
-## ETL Pipeline (Extract, Transform, Load)
-1. We have our Source and Destination between that 'Transformation' happens.
-2. Source here is our local database from which we EXTRACT the csv dataset, we apply TRANSFORMATION to this dataset to change it to json, then we LOAD the data in the destination i.e our MongoDB.
+---
 
+## 📁 Repository Structure
 
-## MongoDB Connection
-1. Create a new Free account in MongoDB Atlas. 
-2. Create a default Cluster0 cluster.
-3. Let the default username and password remain. 
-4. Click Next -> Choose a connection Method -> Click on Drivers
-5. Select Driver as Python and version.
-6. Add the pymongo libraray version in requirements.txt file.
-7. Then click on Done and the Cluster0 will be created.
-8. Then click on Connect on the cluster. Check the full code sample. Copy that code. 
-9. Create a new file - push_data.py in root folder and paste that code. 
-10. In the code, we have to change the dbpassword (in uri object) to our password. (If you have forgotten, go to Quickstart and then you can update the password for your username).
-11. The uri object shouldn't be hardcoded, so to ensure that, we add the same uri string in our .env file. 
-12. Now run python push_data.py and if all is good, it will show You successfully connected to MongoDB.
-13. Cut the push_data.py code into a new file - test_mongodb.py as we will use it later. 
-14. In push_data.py, load that env variable. Get the MONGO_DB_URL from env file and print. 
+```
+Network-Security/
+│
+├── networksecurity/                     # Main source package (all pipeline logic lives here)
+│   ├── __init__.py
+│   ├── components/                      # Core pipeline stage implementations
+│   │   ├── data_ingestion.py            # Pulls data from MongoDB, saves raw CSV
+│   │   ├── data_validation.py           # Validates schema, detects data drift
+│   │   ├── data_transformation.py       # KNN imputation, feature/target split, saves .npy
+│   │   └── model_trainer.py             # Trains models, hyperparameter tuning, MLflow logging
+│   │
+│   ├── entity/                          # Config and Artifact dataclass definitions
+│   │   ├── config_entity.py             # TrainingPipelineConfig, DataIngestionConfig, etc.
+│   │   └── artifact_entity.py           # DataIngestionArtifact, ModelTrainerArtifact, etc.
+│   │
+│   ├── constants/
+│   │   └── training_pipeline/
+│   │       └── __init__.py              # All shared constant values (paths, ratios, names)
+│   │
+│   ├── pipeline/
+│   │   ├── training_pipeline.py         # Orchestrates all 4 stages end-to-end
+│   │   └── batch_prediction.py          # Batch inference pipeline
+│   │
+│   ├── exception/
+│   │   └── exception.py                 # Custom NetworkSecurityException class
+│   │
+│   ├── logging/
+│   │   └── logger.py                    # Centralised logging configuration
+│   │
+│   ├── cloud/
+│   │   └── s3_syncer.py                 # AWS S3 sync utility (artifacts + models)
+│   │
+│   └── utils/
+│       ├── main_utils/
+│       │   └── utils.py                 # save/load object, save/load numpy arrays, read YAML
+│       └── ml_utils/
+│           ├── metric/
+│           │   └── classification_metric.py   # F1, precision, recall scorer
+│           └── model/
+│               └── estimator.py               # NetworkModel wrapper (preprocessor + model)
+│
+├── data_schema/
+│   └── schema.yaml                      # Expected column names and data types
+│
+├── Network_Data/
+│   └── phisingData.csv                  # Raw phishing dataset (source of truth)
+│
+├── final_model/                         # Saved best model and preprocessor after training
+│   ├── model.pkl
+│   └── preprocessor.pkl
+│
+├── prediction_output/                   # Prediction results saved here
+│   └── output.csv
+│
+├── valid_data/                          # Test CSV files for /predict endpoint
+│   └── test.csv
+│
+├── templates/
+│   └── tables.html                      # Jinja2 HTML template for prediction output display
+│
+├── .github/workflows/
+│   └── main.yaml                        # GitHub Actions CI/CD pipeline (CI → ECR → EC2)
+│
+├── app.py                               # FastAPI application — /train and /predict routes
+├── main.py                              # Manual pipeline runner (step-by-step)
+├── push_data.py                         # ETL: CSV → JSON → MongoDB Atlas
+├── setup.py                             # Package builder (makes networksecurity importable)
+├── Dockerfile                           # Container definition for AWS ECR/EC2 deployment
+├── requirements.txt                     # All Python dependencies
+├── mlflow.db                            # Local MLflow tracking database
+└── .gitignore                           # Excludes venv, .env, __pycache__, artifacts
+```
 
+---
 
+## ⚙️ Project Setup — Step by Step
 
-## ETL Pipeline Setup with Python/Inserting Record into MongoDB
-1. Import certifi in push_data.py
-2. Certifi - Python package that provides a set of root certificates - commonly used to make a secure HTTP connection.
-3. Now we will write the function for converting our csv data to json. 
-4. Json data is basically One row's data in key:value pairs while key being column and value being row value. And one row's data would be in a dict with key values pairs.
-5. cv_to_json_converter() - converts the csv data into json and stores the json records in records.
-6. insert_data_mongodb() - create the database, collection and records. Connect to your mongodb client and then create the database and collection. Then insert and return the records.
-7. __main__() - To run this, pass in the FILE_PATH for your dataset (i.e phisingData.csv), give some random name to your dataset and collection, Call the NetworkDataExtract() to convert the data to json, and then insert_data_mongodb() - to insert your data into MongoDB cluster.
-8. After you run python push_data.py - the data gets inserted into MongoDB cluster database. Open that Cluster0 in browser, and open the database, and you can find your json data inserted into it. 
+### Step 1 — Create Virtual Environment
 
+```bash
+python -m venv venv
+```
 
-## Data Ingestion Summary
-1. Data Ingestion Config - It is the basic info to where our data will be stored, train test split, their paths and other things. 
-2. Read the data from MongoDB and converting this data to a Data Ingestion Artifact based on Data Ingestion Config features. 
-3. Artifact would contain our raw data - train and test split also. 
-4. Then we will do feature engineering on the train and test data and then proceed for Data Transformation.
+Activate it:
 
+```bash
+# Windows
+venv\Scripts\activate
 
-## Data Ingestion Configuration
-1. Create training_pipeline folder in constants -> in that create __init__.py where you store the common data that we insert into our Data Ingestion Config. Also define the common constant variable in training pipeline i.e raw data, train and test data. 
-2. Go to MongoDB -> Network Access -> IP Access List -> Create New IP Address -> Add 0.0.0.0/0 
-3. Create config_entity.py in entity folder. Edit it acc. to the below points:
-- Goal : To create Folder Artifact -> Date and Time folder -> Data Ingestion -> feature store -> data.csv
-- TrainingPipelineConfig() - sets the timestamp and main folder. (self.artifact_dir: It joins the main "Artifact" folder name with the "Timestamp".)
-- DataIngestionConfig() - defines exactly where the data goes during the Data Ingestion phase (pulling data from a source)
-- self.data_ingestion_dir: Creates a sub-folder inside your timestamped artifact folder specifically for ingestion.
-- self.feature_store_file_path: This is where the raw data is saved.
-- self.training_file_path & self.testing_file_path: Once the code splits the training and test data, it saves those two specific files in the ingested folder.
-- self.train_test_split_ratio: A number (like 0.2) that tells the code how much data to keep aside for testing.
-- self.collection_name & database_name: Since you'll likely pull data from your MongoDB's database and collection. 
+# macOS / Linux
+source venv/bin/activate
+```
 
+### Step 2 — Create Required Files and Folders
 
-## Data Ingestion Component/Initiate
-### Read the Data from MongoDB -> Create Feature Store -> Split Test and Train Data -> Save in Ingested folder.
-#### Read Data from MongoDB:
-1. Create data_ingestion.py in components folder. Edit code as per below:
-- export_collection_as_dataframe() - Connects to MongoDB database and converts into a dataframe. 
-- collection.find(): It grabs every single record in that database table.
-- pd.DataFrame() - converts to dataframe.
-- Drop the _id column (_id column is always present if you retrieve data from MongoDB).
-- Replace NA values with NAN (null value).
-- initiate_data_ingestion() - collect the data frame using the above function. 
-#### Create Feature Store
-- export_data_into_feature_store() - gets the df data -> Stores in the feature store by converting into csv in feature_store_file_path
-#### Split Training and Testing Data
-- split_data_as_train_test() - divides the above csv data into train and test csv. 
-- os.makedirs(dir_path) - It looks at the path you defined (Artifacts/timestamp/data_ingestion/ingested)
-- It saves the Training data to your training_file_path and Testing data to testing_file_path.
-- Call split_data_as_train_test() function in initiate_data_ingestion() with the dataframe.
-2. Create artifact_entity.py in entity folder and initialize DataIngestionArtifact dataclass to store your Trained and Test data in Artifacts folder.
-- Now call this dataclass in initiate_data_ingestion() - with the trained data and test data file path.
-3. Create main.py in your root folder and call TrainingPipelineConfig and DataIngestionConfig
-- From that, create DataIngestion() obj and then use initiate_data_ingestion() to start the Full Process of Data Ingestion. 
-- Execute python main.py - if it will create artifacts folder with train and test.csv in ingested folder and raw data in feature store, then our code is a success.
-4. If your code is success, delete the Artifacts folder and logs folder, then commit the code.
+Create these files in the project root:
 
+```
+requirements.txt
+.gitignore
+setup.py
+Dockerfile
+.env
+.github/workflows/main.yaml
+```
 
-## Data Validation Configuration
-Validate data based upon:
-- Our dataset should have same no. of features(columns). 
-- Data Drift - it happens when the data you see today is significantly different from the data you used to train the model.
-- Validate no. of columns, numerical columns exist or not. 
-1. In training_pipeline.py, you store the common data - Data validation, invalid, valid data, Drift report, preprocessing.pkl - that we insert into our Data Validation Config.
-2. Then in config_entity.py, we use DataValidation() to get the paths for valid data, invalid data, train invalid and valid, test valid and invalid data, data drift report. 
-3. Add the no. 2 values in DataValidationArtifact dataclass also in artifact_entity.py
-4. Create data_schema folder in root. Then create schema.yaml file and paste the code in that. Also specify the path for this in training_pipeline > __init__.py file.
-5. Create main_utils folder in utils > Add __init__.py and utils.py in it. Now add the code in utils.py for reading yaml file. 
-6. Create data_validation.py, then write code below:
-- initialize dataingestionartifact and datavalidationartifact and then read the schema file. 
+Create these folders:
 
+```
+Network_Data/       ← place phisingData.csv here
+networksecurity/    ← main source package
+notebooks/          ← optional Jupyter experiments
+```
 
-## Data Validation Initiation
-1. Load the training and test data with their filepath. 
-2. status checks the no. of columns defined in our schema on the training and testing data. 
-3. Then we need to check the data drift - compares the distribution of the test data against the training data to see if the statistical properties have shifted significantly. Result would be stored as True or False. 
-4. Store the validated data in the new folder path. 
-5. Save the trained and test data frames as CSV in the path. 
-6. Create Data Validation Artifact which checks the Status based on the Training and Test data. If the data drift is detected and then store the data in the specific path. 
-7. To run this data validation, go to main.py -> Initialize the data validation config and data validation (pass the data validation config and data ingestion artifact).
-8. At last, then initialize the data validation artifact by calling the initiate_data_validation(). 
+> **Critical:** Every folder inside `networksecurity/` must have an `__init__.py` file. Without it, Python does not recognise the folder as a package and all imports will fail.
 
+### Step 3 — Install Dependencies
 
-## Data Transformation
-1. Add the class DataTransformationConfig in the config_entity.py.
-2. Add the dataclass Data Transformation Artifact in artifact_entity.py
-3. Add the Data Transformation related costants in constants>training_pipeline>__py_cache__>__init__.py
-4. Add the new functions - save_numpy_array_data(), save_object(), load_object() and load_numpy_array_data() in utils>utils.py
-5. Now create a new data_transformation.py file and write the code there. 
-6. Load the Validated Data: Load the training and test DataFrames using the file paths provided by the DataValidationArtifact.
-7. Feature and Target Separation: Separate the features from the target column for both training and testing datasets by dropping the TARGET_COLUMN.
-8. Target Label Cleaning: Replace the target labels (specifically converting -1 to 0) to ensure the target feature is in a standard format for the model.
-9. Initialize Preprocessing Object: Create a get_data_transformer_object which initializes a KNNImputer using parameters defined in your constants. This pipeline handles missing values by estimating them based on the "nearest neighbors" in the data.
-10. Fit and Transform:
-Fit the preprocessor on the training features to learn the imputation patterns.
-Apply the transformation to both the training and testing feature sets.
-11. Data Recombination: Combine the transformed features back with their respective target columns using np.c_ to create final training and testing arrays.
-12. Artifact Storage:
-Save the transformed training and testing data as NumPy arrays (.npy) in the designated folder.
-Save the preprocessor object as a pickle file (.pkl) so it can be reused during model prediction/deployment.
-13. Create Data Transformation Artifact: Generate an artifact containing the paths to the transformed data and the saved preprocessor object.
-14. Execution via main.py: To run this component, initialize the DataTransformationConfig and DataTransformation class (passing the config and the DataValidationArtifact), then call the initiate_data_transformation() method.
+```bash
+pip install -r requirements.txt
+```
 
+### Step 4 — Create the `.env` File
 
-## Model Trainer (along with MLFlow and Dagshub)
-1. Define ModelTrainerConfig class in config_entity.py
-2. Create Model Trainer constants DIR NAME in constants>training pipeline> __init__.py
-3. Add 2 data class - Classification Metrics and Model Trainer Artifacts in artifact_entity.py
-4. Create load_object and load_numpy_array_data functions in utils.py
-5. Create 2 folders - metric and model in utils folder.
-6. Create classification_metric in metric folder and write the function to get the classification score like recall, f1 score, precision score.
-7. Create estimator.py in model folder of utils > Then write the code for prediction. (Ensure you use SAVED_MODEL and MODEL FILE NAME in __init__.py > constants)
-8. Create model_trainer.py in components and write the following code:
-9. Create Model Trainer class with model trainer config and data transformation artifact.
-10. Create the inititate_model_training() and pass the train and test data. Then divide into X and y.
-11. Then create train_model() to load the models, apply hyperparameter tuning. 
-12. Then pass these values in the evaluate_model() > We can configure this function in the utils.py.
-13. Find the best model with the code.
-14. Then get the classification score for both test and train. 
-15. Load the object and model in the designed path using load_object() and load numpy array().
-16. Then make your Network Model using your best model and preprocessor and then save your object in the pickle .pkl file. 
-16. Then make the ModelTrainerArtifact and return it. 
-17. Create the track_mlflow() -> to execute the classification score, f1 score, precision score and recall score.
-18. Then apply this function to your best model to calculate the scores in the MLFlow. 
-19. In terminal, run "mlflow ui" -> to generate a link - where you can access MLFlow website to view your data.
-20. Then we can mention Dagshub -> Go to Dagshub -> Login by Github -> Create the repository from your exisiting Github repo and then go to Experiments tab -> Copy the import dagshub and your repository line in your model_trainer.py file. (import dagshub)
-21. Then run python main.py -> To execute the training process for the model training and then it will be saved into your dagshub. 
-22. In the 'Experiments' tab -> we can see the 2 models created -> Then we can compare the 2 models and see the classification scores and graphs. 
-23. Based on your best model, the model.pkl will be saved in final_model folder and the preprocessing.pkl file will also be based from data_transformation.py
+```env
+MONGO_DB_URL=mongodb+srv://<username>:<password>@cluster0.xxxxx.mongodb.net/
+MONGO_URL_KEY=mongodb+srv://<username>:<password>@cluster0.xxxxx.mongodb.net/
+AWS_ACCESS_KEY_ID=your_key
+AWS_SECRET_ACCESS_KEY=your_secret
+AWS_REGION=ap-south-1
+```
 
+> **Security:** Add `.env` and `venv/` to your `.gitignore` immediately. Never commit credentials.
 
-## PIPELINE of Model Training
-1. Create 2 py files - batch_prediction and training_pipeline in 'pipeline' folder.
-2. Start writing code in training_pipeline.py : 
-3. Initialization (__init__)
-Sets up the base TrainingPipelineConfig, which holds the global configurations needed across the entire pipeline.
-4. Stage 1: Data Ingestion (start_data_ingestion)
-Action: Fetches or loads the raw data.
-Process: Initializes DataIngestion using its specific config.
-Output: Returns a DataIngestionArtifact (contains paths to the train and test files).
-5. Stage 2: Data Validation (start_data_validation)
-Input: Requires the DataIngestionArtifact from Stage 1.
-Action: Checks the ingested data for structural integrity and data drift.
-Output: Returns a DataValidationArtifact (contains paths to validated, clean data).
-4. Stage 3: Data Transformation (start_data_transformation)
-Input: Requires the DataValidationArtifact from Stage 2.
-Action: Applies feature engineering, scaling, or encoding to prepare the data for the algorithm.
-Output: Returns a DataTransformationArtifact (contains paths to the transformed data and preprocessing objects).
-5. Stage 4: Model Training (start_model_trainer)
-Input: Requires the DataTransformationArtifact from Stage 3.
-Action: Trains the actual machine learning model using the prepared data.
-Output: Returns a ModelTrainerArtifact (contains paths to the final trained model and performance metrics).
-6. Master Orchestration (run_pipeline)
-This is the main trigger function. It executes Stages 1 through 4 in sequential order.
-It automatically handles passing the artifact from one step directly into the next step.
-Ultimately returns the final model_trainer_artifact.
+### Step 5 — Install the Package Locally
 
+```bash
+pip install -e .
+```
 
-## APP.PY - To execute all the above functions in our Frontend by creating APIs.
-1. Create app.py in your main/root folder.
-2. Install fastapi and uvicorn libraries.
-3. Start writing code in app.py : 
-4. Database Connection & Setup :
--> Initializes a MongoDB client connection (pymongo.MongoClient) using a secure database URL and a TLS certificate (tlsCAFile=ca) to encrypt the connection.
--> Targets a specific database and collection dynamically using predefined constants (DATA_INGESTION_DATABASE_NAME and DATA_INGESTION_COLLECTION_NAME).
-5. FastAPI App Initialization
--> Instantiates the web application object with app = FastAPI().
-6. CORS Middleware Configuration
--> Registers CORSMiddleware with origins = ["*"] (wildcard). This permits frontend applications hosted on any domain or port to securely communicate with this backend API, allowing all HTTP methods and headers.
-7. Root Route Redirect (/)
--> Defines a basic GET endpoint for the root URL (/).
--> Automatically redirects users to /docs, which is FastAPI's built-in interactive Swagger UI documentation page where all available APIs can be tested.
-8. Model Training Route (/train)
--> Exposes an asynchronous GET endpoint at /train to kick off the ML pipeline.
--> Logic: Instantiates the TrainingPipeline object and calls its run_pipeline() method to execute data ingestion, validation, transformation, and training.
--> Success Response: Returns "Training is successful" if the pipeline finishes without crashing.
-9. Now initialize the main function to execute the app.py
-10. Run "uvicorn app:app --reload" in terminal to execute the app.py in your localhost.
-11. Open Localhost link -> Go to default/train and execute it. 
-12. After you execute, the full project will start training and new train and test experiments models will be created to compare in Dagshub. 
+The `-e` (editable) flag installs `networksecurity` as a local Python package, making all internal imports like `from networksecurity.components.data_ingestion import DataIngestion` work correctly from any file in the project.
 
+### Step 6 — Push to GitHub
 
-## Batch Prediction PIPELINE
-1. Create templates folder > tables.html > Write the prewritten html code.
-2. Create valid_data folder > paste the test.csv (data in which you want to predict via your model)
-3. Now add the following code for /predict in app.py:
-4. Template Engine Initialization
--> Sets up Jinja2Templates to look into the ./templates folder, allowing FastAPI to serve and render dynamic HTML files.
-5. File Upload and Data Loading
--> Exposes a POST route at /predict that accepts a user-uploaded file via UploadFile.
--> Reads the incoming raw uploaded file straight into a Pandas DataFrame using pd.read_csv(file.file).
-6. Model Loading and Wrapper Initialization
--> Deserializes and loads two critical components from the local disk (final_model/ directory) using a helper function load_object():
--> The feature preprocessing object (preprocessor.pkl).
--> The trained machine learning classification/regression algorithm (model.pkl).
--> Binds both items together inside a custom wrapper class named NetworkModel.
-7. Prediction Logic
--> Passes the entire DataFrame into the network_model.predict(df) method to generate model inferences (y_pred).
--> Appends these results back into the original data by creating a brand-new column named predicted_column.
-8. Output Persistence (File Saving)
--> Ensures the target folder prediction_output exists via os.makedirs(..., exist_ok=True).
--> Saves the newly updated DataFrame containing the predictions as a CSV file locally (prediction_output/output.csv) without keeping the DataFrame row index.
-9. HTML Presentation and Rendering
--> Converts the entire Pandas DataFrame into a raw HTML table string via df.to_html(), applying Bootstrap styling classes (table table-striped) for a polished frontend appearance.
--> Returns a TemplateResponse targeting "tables.html" (Note: ensure your file is named tables.html with an 's' to match this line). It safely injects both the HTTP request context and the generated table_html string into the webpage template.
-10. Now run uvicorn app:app --reload to run it in your local machine. 
-11. Now you can see the /predict section in your page. 
-12. Click on try it out > Upload your test.csv > Then click on execute > If successfully executed, then you can see the full data in the table format there > And you can verify there will be a predicted_output folder with the output.csv in your project with an additional predicted_column in the file. 
+```bash
+git init
+git add .
+git commit -m "Initial commit"
+git branch -M main
+git remote add origin https://github.com/BikashBIOS/Network-Security.git
+git push -u origin main
+```
 
+---
 
-## Pushing Final Models & Artifacts to S3 AWS
-1. Create s3_syncer.py in networksecurity > cloud folder. 
-2. Write the code for the commands to run in AWS CLI.
-3. Then write 2 functions to sync artifacts and saved models to s3 in training_pipeline.py:
-4. Artifact Directory Synchronization (sync_artifact_dir_to_s3)
--> Purpose: Uploads the entire intermediate data history (ingested data, validated data, drift reports, transformation objects) to the cloud.
--> Logic: Constructs a target S3 cloud URL pointing to a subfolder named /artifact/ appended with the unique pipeline runtime timestamp.
--> Execution: Calls the s3_sync.sync_folder_to_s3() utility to push the local artifact_dir folder to that specific S3 destination.
-5. Saved Model Synchronization (sync_saved_model_dir_to_s3)
--> Purpose: Specifically pushes the final, production-ready trained model files to AWS S3 so they can be pulled later for deployments or production APIs.
--> Logic: Constructs an S3 cloud URL pointing to a subfolder named /final_model/, also organized by the pipeline's runtime timestamp.
--> Execution: Instructs the sync utility to copy the contents of the local model storage path (model_dir) up to the designated S3 bucket location.
--> Call both the functions in run_pipeline().
-6. Remember to initiate TRAINING_BUCKET_NAME in in the __init__.py
+## 📄 File-by-File Code Walkthrough
 
+---
 
+### `setup.py` — Making the Project a Python Package
 
-## PUSH DATA TO AWS S3
-1. Download AWS CLI. 
-2. Open your AWS Console.
-3. Go to IAM.
-4. Create a new user - testsecurity.
-5. Next > Attach Policies directly > Select Administrator Access.
-6. Create user.
-7. Then open your user > Go to Access keys > go to Security Credentials > Create Access Keys
-8. Select CLI > Next > Create access key.
-9. Copy the Key and password.
-10. Now go to your Project Terminal > aws configure > Give the access key Id and then the password. 
-11. Go to S3 > Create bucket > Bucket name > Create bucket (Bucket Name should be equal to the TRAINING_BUCKET_NAME in our __init__.py)
-12. Then run uvicorn app:app --reload
-13. If executed successfully, we will find the artifacts and final_models folders in S3 bucket.
-14. Now, we can also run our program via "python main.py" - it will run the uvicorn command also.
+```python
+from setuptools import find_packages, setup
+from typing import List
 
+def get_requirements() -> List[str]:
+    requirement_list: List[str] = []
+    try:
+        with open('requirements.txt', 'r') as file:
+            lines = file.readlines()
+        for line in lines:
+            requirement = line.strip()
+            if requirement and requirement != '-e .':
+                requirement_list.append(requirement)
+    except FileNotFoundError:
+        print("Requirements file not found")
+    return requirement_list
 
-## DEPLOYMENT TO AWS ECR
-1. To deploy the full project into EC2 Instance. 
-2. So, we need to convert the NetworkSecurity Project into a Docker Image. 
-3. This Docker Image can be uploaded in AWS ECR.
-4. Then we will deploy this whole in the EC2 Instance.
-NOTE - This whole process will require GitHub Actions via CI-CD Pipelines and App Runners. 
+setup(
+    name="NetworkSecurity",
+    version="0.0.1",
+    author="Bikash",
+    author_email="bikashojha101@gmail.com",
+    packages=find_packages(),
+    install_requires=get_requirements()
+)
+```
 
-### Github Action Process :
-1. In the Dockerfile, write the following code to specify python3 version and run the app.py
-2. In .github/workflows folder > main.yaml, we need to edit the code. 
-3. Add the name: , on: and jobs: tags in main.yaml file and push the code. 
-4. Then we can see in the Actions tab of your github repository, your continuous integration action with all the functions running. 
+`find_packages()` automatically scans all sub-folders that contain an `__init__.py` file and registers them as importable packages. This is why every sub-folder needs an `__init__.py`.
 
+`get_requirements()` reads `requirements.txt` line by line and builds a list of dependencies. The `if requirement != '-e .'` guard removes the `-e .` self-referential install line if it appears in the file — installing a package as its own dependency would cause a circular error.
 
-### ECR AWS - Docker Image Creation
-1. Go to ECR -> Create repository -> give name and create.
-2. Copy the URI.
-3. Copy the Code for build and push ecr image from main.yaml file. 
-4. Provide aws access key id and password (HOW TO GET THIS):
-5. Go to IAM User -> Generate teh access key id and password.
-6. Come to Github -> Secrets and Variable -> Actions -> New repository secret -> 
-7. AWS ACCESS KEY ID -> Provide the Aws access key id. and add.
-8. AWS SECRET ACCESS KEY -> Provide the password and add.
-9. AWS REGION -> Provide the region.
-10. AWS ECR LOGIN URI -> Paste the URI (Don't copy the repo name attached to it)
-11. ECR REPOSITORY NAME -> Name of the ecr repository.
-12. Add the Build, tag and push image to Amazon ECR into main.yaml
-13. Push the code to github and go to Actions > You can see the CI-CD pipeline running.
-14. If the execution is successful, then tick marks would be there and mainly you can see the Docker Image being created in your ECR AWS. (latest is our docker image name).
+`install_requires=get_requirements()` tells pip to automatically install all listed packages whenever someone runs `pip install .` or `pip install -e .` on this project.
 
+After running `pip install -r requirements.txt`, a `NetworkSecurity.egg-info/` folder is created — this is the package metadata directory confirming the package has been registered locally.
 
-## Pushing ECR to EC2 Instance
-1. Add Continuous Deployment code in the main.yaml file. 
-2. Go to EC2 in Console > Launce an Instance > Give the name > Select Ubuntu > Select the t3.micro (depends upon choice) > Create Instance. 
-3. After creating > click on instance id > Connect > Connect via Public IP > Amazon CLI opens.
-4. Now we have to write some preinstallation Docker Setup in EC2 Commands : 
--> sudo apt-get update -y
--> sudo apt-get upgrade
--> curl -fsSL https://get.docker.com -o get-docker.sh
--> sudo sh get-docker.sh
--> sudo usermod -aG docker ubuntu
--> newgrp docker
-5. After running all the codes, come to Github repo > Settings > Actions > Runners
-6. Click on New self hosted Runner. 
-7. Click on Linux. 
-8. Execute the 4 codes mentioned there one by one in EC2 CLI.
-9. Then execute the next 2 codes below that. 
-10. While prompted, enter runner name as "self-hosted" (as we mentioned it in main.yaml Continuous Deployment).
-11. Then ./run.sh
-12. Then you can see your self hosted runner being Idle in the runners section of Github. 
-13. Now change the host = "0.0.0.0" in the app.py. 
-14. Commit and Push the Code to Github. 
-15. Now you can see the Pipeline of Continuous Integration > Continuous Delivery > Continuous Deployment. 
-16. If executed successfully, you can see tick marks in 3 sections. 
-17. Then go to Security groups of Instance and add another Custom TCP of 0.0.0.0 with Port 8080.
-18. Save it and then open the instance and copy the Public IpV4 address and open it in the browser.
-19. Add :8080 to the ip address and open -> FastAPI screen will open and you can train and predict the data. 
+---
 
+### `push_data.py` — ETL Pipeline (CSV → JSON → MongoDB)
 
-## To Run this Project Finally : 
-1. Open this project in VS code. 
-2. Open the venv env. 
-3. Run "uvicorn app:app --reload"
-4. Open the local host link in browser. 
-5. Click on train -> Execute
-6. Execution starts in the vs code. 
-7. After Execution, you can see a successful response in train in Fast API.
-8. Then click on predict -> try it out -> Select the test.csv file in valid_data.
-9. Then execute.
-10. Prediction happens in vs code. 
-11. Then the same test.csv gets generated with a new column 'predicted_column' in prediction_output folder/output.csv.
+This script implements the full **Extract → Transform → Load** pipeline to seed your MongoDB database with the phishing dataset.
+
+```python
+import os
+import sys
+import json
+from dotenv import load_dotenv
+
+load_dotenv()
+MONGO_DB_URL = os.getenv("MONGO_DB_URL")
+
+import certifi
+ca = certifi.where()
+```
+
+`load_dotenv()` reads the `.env` file and injects all variables into the OS environment. `os.getenv("MONGO_DB_URL")` then retrieves the MongoDB connection string without ever hardcoding it in the source code — a critical security practice.
+
+`certifi` is a Python package that bundles a set of trusted SSL/TLS root certificates. `certifi.where()` returns the file path to this certificate bundle. MongoDB Atlas requires a TLS-encrypted connection, and `ca` is later passed to `pymongo.MongoClient` so it can verify the server's SSL certificate.
+
+```python
+class NetworkDataExtract():
+    def cv_to_json_converter(self, file_path):
+        data = pd.read_csv(file_path)
+        data.reset_index(drop=True, inplace=True)
+        records = list(json.loads(data.T.to_json()).values())
+        return records
+```
+
+`pd.read_csv(file_path)` loads the entire phishing CSV dataset into a Pandas DataFrame. Each row is a network connection sample; each column is a feature (URL length, presence of HTTPS, number of dots in URL, etc.).
+
+`data.reset_index(drop=True, inplace=True)` reassigns row indices from 0 to N sequentially. `drop=True` prevents the old index from becoming a new column. `inplace=True` modifies the DataFrame in place rather than returning a copy.
+
+`data.T` **transposes** the DataFrame — columns become rows and rows become columns. This is the key conversion trick: after transposing, each original row (one data sample) becomes a column, and `to_json()` converts each column into a JSON object like `{"feature1": val, "feature2": val, ...}`.
+
+`json.loads(...).values()` parses the JSON string back into a Python dict and extracts just the values (the individual record dicts). `list(...)` converts the dict_values object into a plain Python list. The result is a list of dicts — exactly the format `pymongo.insert_many()` expects.
+
+```python
+    def insert_data_mongodb(self, records, database, collection):
+        self.mongo_client = pymongo.MongoClient(MONGO_DB_URL)
+        self.database = self.mongo_client[self.database]
+        self.collection = self.database[self.collection]
+        self.collection.insert_many(self.records)
+        return len(self.records)
+```
+
+`pymongo.MongoClient(MONGO_DB_URL)` opens a persistent connection to your MongoDB Atlas cluster using the connection string from `.env`. MongoDB Atlas is a cloud-hosted NoSQL database — it stores your data as documents (JSON-like objects).
+
+`self.mongo_client[self.database]` selects (or creates) a database named `BIKASHAI`. In MongoDB, databases and collections are created automatically on first write if they don't already exist — no schema definition required.
+
+`self.collection.insert_many(self.records)` pushes all records at once in a single network call, which is far more efficient than calling `insert_one()` thousands of times in a loop. MongoDB assigns each record a unique `_id` field automatically.
+
+```python
+if __name__ == '__main__':
+    FILE_PATH = "Network_Data\phisingData.csv"
+    DATABASE = "BIKASHAI"
+    Collection = "NetworkData"
+    networkobj = NetworkDataExtract()
+    records = networkobj.cv_to_json_converter(file_path=FILE_PATH)
+    no_of_records = networkobj.insert_data_mongodb(records, DATABASE, Collection)
+    print(no_of_records)
+```
+
+**To run:**
+```bash
+python push_data.py
+```
+After execution, open MongoDB Atlas in the browser → Cluster0 → Collections → `BIKASHAI` database → `NetworkData` collection, and you will see all phishing records inserted as JSON documents.
+
+---
+
+### `networksecurity/constants/training_pipeline/__init__.py` — Shared Constants
+
+This file acts as the **single source of truth** for all magic strings and numbers used across the pipeline. Centralising constants here means if you need to rename a folder or change a ratio, you change it in one place and it propagates everywhere.
+
+Key constants include:
+
+```python
+# Pipeline artifact root
+PIPELINE_NAME: str = "NetworkSecurity"
+ARTIFACT_DIR: str = "Artifacts"
+
+# Data Ingestion constants
+DATA_INGESTION_COLLECTION_NAME: str = "NetworkData"
+DATA_INGESTION_DATABASE_NAME: str = "BIKASHAI"
+DATA_INGESTION_DIR_NAME: str = "data_ingestion"
+DATA_INGESTION_FEATURE_STORE_DIR: str = "feature_store"
+DATA_INGESTION_INGESTED_DIR: str = "ingested"
+DATA_INGESTION_TRAIN_TEST_SPLIT_RATIO: float = 0.2
+
+# Data Validation constants
+DATA_VALIDATION_DIR_NAME: str = "data_validation"
+DATA_VALIDATION_VALID_DIR: str = "validated"
+DATA_VALIDATION_INVALID_DIR: str = "invalid"
+DATA_VALIDATION_DRIFT_REPORT_DIR: str = "drift_report"
+DATA_VALIDATION_DRIFT_REPORT_FILE_NAME: str = "report.yaml"
+SCHEMA_FILE_PATH = os.path.join("data_schema", "schema.yaml")
+
+# Data Transformation constants
+DATA_TRANSFORMATION_DIR_NAME: str = "data_transformation"
+DATA_TRANSFORMATION_TRANSFORMED_DATA_DIR: str = "transformed"
+DATA_TRANSFORMATION_TRANSFORMED_OBJECT_DIR: str = "transformed_object"
+PREPROCESSING_OBJECT_FILE_NAME = "preprocessing.pkl"
+DATA_TRANSFORMATION_IMPUTER_PARAMS: dict = {
+    "missing_values": np.nan,
+    "n_neighbors": 3,
+    "weights": "uniform"
+}
+
+# Model Trainer constants
+MODEL_TRAINER_DIR_NAME: str = "model_trainer"
+MODEL_TRAINER_TRAINED_MODEL_DIR: str = "trained_model"
+MODEL_FILE_NAME = "model.pkl"
+MODEL_TRAINER_EXPECTED_SCORE: float = 0.6
+MODEL_TRAINER_OVER_FITTING_UNDER_FITTING_THRESHOLD: float = 0.05
+
+# Target column
+TARGET_COLUMN = "Result"
+```
+
+`DATA_TRANSFORMATION_IMPUTER_PARAMS` deserves special attention: `n_neighbors: 3` tells the KNN Imputer to look at the 3 nearest neighbours when estimating a missing value. `weights: "uniform"` means all 3 neighbours are weighted equally (alternative is `"distance"`, which gives closer neighbours more influence). These values are passed directly to sklearn's `KNNImputer`.
+
+---
+
+### `networksecurity/entity/config_entity.py` — Configuration Dataclasses
+
+Config classes define **where everything is stored**. They are computed once at the start of a pipeline run and then threaded through every stage.
+
+```python
+@dataclass
+class TrainingPipelineConfig:
+    pipeline_name: str = PIPELINE_NAME
+    artifact_dir: str = os.path.join(ARTIFACT_DIR, PIPELINE_NAME, timestamp)
+    timestamp: str = timestamp
+```
+
+`TrainingPipelineConfig` establishes the **root artifact directory** for this specific run. The `timestamp` (formatted as `YYYY_MM_DD_HH_MM_SS`) ensures every training run gets its own uniquely-named folder. This means historical runs are never overwritten — you can always look back at artifacts from a previous execution.
+
+```python
+@dataclass
+class DataIngestionConfig:
+    data_ingestion_dir: str = os.path.join(
+        training_pipeline_config.artifact_dir, DATA_INGESTION_DIR_NAME
+    )
+    feature_store_file_path: str = os.path.join(
+        data_ingestion_dir, DATA_INGESTION_FEATURE_STORE_DIR, FILE_NAME
+    )
+    training_file_path: str = os.path.join(
+        data_ingestion_dir, DATA_INGESTION_INGESTED_DIR, TRAIN_FILE_NAME
+    )
+    testing_file_path: str = os.path.join(
+        data_ingestion_dir, DATA_INGESTION_INGESTED_DIR, TEST_FILE_NAME
+    )
+    train_test_split_ratio: float = DATA_INGESTION_TRAIN_TEST_SPLIT_RATIO
+    collection_name: str = DATA_INGESTION_COLLECTION_NAME
+    database_name: str = DATA_INGESTION_DATABASE_NAME
+```
+
+This constructs a path structure like:
+```
+Artifacts/NetworkSecurity/2024_01_15_10_30_00/
+  └── data_ingestion/
+      ├── feature_store/
+      │   └── phisingData.csv         ← raw full dataset
+      └── ingested/
+          ├── train.csv               ← 80% training split
+          └── test.csv                ← 20% testing split
+```
+
+---
+
+### `networksecurity/entity/artifact_entity.py` — Artifact Dataclasses
+
+While config classes define **where to put things**, artifact classes define **what was produced**. After each pipeline stage, an artifact object is returned containing the actual file paths where outputs were saved. That artifact is then passed as input to the next stage.
+
+```python
+@dataclass
+class DataIngestionArtifact:
+    trained_file_path: str
+    test_file_path: str
+
+@dataclass
+class DataValidationArtifact:
+    validation_status: bool
+    valid_train_file_path: str
+    valid_test_file_path: str
+    invalid_train_file_path: str
+    invalid_test_file_path: str
+    drift_report_file_path: str
+
+@dataclass
+class DataTransformationArtifact:
+    transformed_object_file_path: str  # path to preprocessor.pkl
+    transformed_train_file_path: str   # path to train.npy
+    transformed_test_file_path: str    # path to test.npy
+
+@dataclass
+class ClassificationMetricArtifact:
+    f1_score: float
+    precision_score: float
+    recall_score: float
+
+@dataclass
+class ModelTrainerArtifact:
+    trained_model_file_path: str
+    train_metric_artifact: ClassificationMetricArtifact
+    test_metric_artifact: ClassificationMetricArtifact
+```
+
+Using Python `@dataclass` is a clean, lightweight way to define these result containers. They behave like simple named tuples with dot-access syntax (`artifact.trained_file_path`), making the data handoff between pipeline stages readable and self-documenting.
+
+---
+
+### `networksecurity/components/data_ingestion.py` — Stage 1: Data Ingestion
+
+This component is responsible for pulling raw data out of MongoDB and saving it locally in a structured folder.
+
+```python
+def export_collection_as_dataframe(self):
+    database_name = self.data_ingestion_config.database_name
+    collection_name = self.data_ingestion_config.collection_name
+    self.mongo_client = pymongo.MongoClient(MONGO_DB_URL)
+    collection = self.mongo_client[database_name][collection_name]
+    df = pd.DataFrame(list(collection.find()))
+    if "_id" in df.columns.to_list():
+        df = df.drop(columns=["_id"], axis=1)
+    df.replace({"na": np.nan}, inplace=True)
+    return df
+```
+
+`collection.find()` with no arguments returns a cursor over every document in the MongoDB collection. Wrapping it in `list()` materialises all documents into memory, and `pd.DataFrame()` converts the list of dicts into a tabular structure.
+
+`df.drop(columns=["_id"])` removes the MongoDB-generated ObjectId column. MongoDB automatically adds `_id` to every inserted document, but it has no predictive value for the ML model and would confuse sklearn transformers if left in.
+
+`df.replace({"na": np.nan})` standardises missing value representation. The CSV may have stored missing values as the string `"na"` (a common issue in network security datasets), which pandas doesn't recognise as a null. Replacing with `np.nan` makes them detectable by `df.isnull()`, `df.dropna()`, and sklearn imputers.
+
+```python
+def export_data_into_feature_store(self, dataframe: pd.DataFrame) -> pd.DataFrame:
+    feature_store_file_path = self.data_ingestion_config.feature_store_file_path
+    dir_path = os.path.dirname(feature_store_file_path)
+    os.makedirs(dir_path, exist_ok=True)
+    dataframe.to_csv(feature_store_file_path, index=False, header=True)
+    return dataframe
+```
+
+`os.makedirs(dir_path, exist_ok=True)` creates the full directory path including any intermediate folders that don't exist yet. `exist_ok=True` prevents an error if the directory already exists — without this flag, re-running the pipeline would crash here.
+
+The raw data is saved as a CSV at the `feature_store_file_path`. This "feature store" acts as a permanent local cache of the raw MongoDB data — if the database connection goes down, you can reprocess from here without re-querying MongoDB.
+
+```python
+def split_data_as_train_test(self, dataframe: pd.DataFrame):
+    train_set, test_set = train_test_split(
+        dataframe,
+        test_size=self.data_ingestion_config.train_test_split_ratio
+    )
+    dir_path = os.path.dirname(self.data_ingestion_config.training_file_path)
+    os.makedirs(dir_path, exist_ok=True)
+    train_set.to_csv(self.data_ingestion_config.training_file_path, index=False, header=True)
+    test_set.to_csv(self.data_ingestion_config.testing_file_path, index=False, header=True)
+```
+
+`train_test_split()` from sklearn randomly shuffles and divides the dataset. With `test_size=0.2`, **80% of rows go to training** and **20% go to testing**. The split is random but reproducible if you pass a `random_state` parameter.
+
+Why split here and not later? Splitting early ensures that **data validation, transformation, and model evaluation all operate on truly unseen test data**. If you applied transformations to the full dataset before splitting, statistical properties (like mean and variance used for normalisation) would leak from the test set into the training process — a form of data leakage that inflates evaluation scores.
+
+---
+
+### `networksecurity/components/data_validation.py` — Stage 2: Data Validation
+
+This component checks two things: that the data has the expected structure, and that the data distribution hasn't shifted significantly.
+
+```python
+def validate_number_of_columns(self, dataframe: pd.DataFrame) -> bool:
+    number_of_columns = len(self._schema_config)
+    if len(dataframe.columns) == number_of_columns:
+        return True
+    return False
+```
+
+`self._schema_config` is loaded from `data_schema/schema.yaml`, which lists all expected column names. If the ingested data has a different number of columns than the schema specifies — perhaps due to a corrupt CSV export or a schema migration in MongoDB — this check fails immediately before wasting compute time on the rest of the pipeline.
+
+```python
+def detect_dataset_drift(self, base_df, current_df, threshold=0.05) -> bool:
+    status = True
+    report = {}
+    for column in base_df.columns:
+        d1 = base_df[column]
+        d2 = current_df[column]
+        is_same_dist = ks_2samp(d1, d2)
+        if threshold > is_same_dist.pvalue:
+            is_found = True
+            status = False
+        else:
+            is_found = False
+        report.update({column: {
+            "p_value": float(is_same_dist.pvalue),
+            "drift_status": is_found
+        }})
+    drift_report_file_path = self.data_validation_config.drift_report_file_path
+    os.makedirs(os.path.dirname(drift_report_file_path), exist_ok=True)
+    write_yaml_file(file_path=drift_report_file_path, content=report)
+    return status
+```
+
+**The Kolmogorov-Smirnov (KS) Two-Sample Test** is a non-parametric statistical test that measures whether two distributions are drawn from the same underlying probability distribution. It works on any numerical distribution — no assumption of normality required.
+
+`ks_2samp(d1, d2)` returns a `KstestResult` with two values: the `statistic` (the maximum absolute difference between the two cumulative distribution functions) and the `pvalue`. 
+
+The **p-value** represents the probability of observing differences this extreme if the two distributions were actually the same. A low p-value (below the `threshold` of 0.05) means the distributions are **statistically significantly different** — i.e., drift is detected.
+
+**Why does drift matter?** A model trained on data from January may perform poorly on data from September if, for example, attackers changed their URL patterns, or if network traffic characteristics shifted. The drift report flags which specific columns drifted, so you can decide whether to retrain or investigate.
+
+The report is saved as a YAML file, recording the p-value for every column. This creates an auditable, human-readable drift log for each pipeline run.
+
+---
+
+### `networksecurity/components/data_transformation.py` — Stage 3: Data Transformation
+
+This component prepares the validated data for the ML algorithm by handling missing values and restructuring the data into arrays.
+
+```python
+@staticmethod
+def get_data_transformer_object() -> Pipeline:
+    logging.info("Initializing KNNImputer transformer pipeline")
+    imputer = KNNImputer(**DATA_TRANSFORMATION_IMPUTER_PARAMS)
+    processor = Pipeline(steps=[("imputer", imputer)])
+    return processor
+```
+
+**KNN Imputer — How it Works Mathematically:**
+
+Real-world network security data frequently has missing values — a sensor might fail to record a URL feature, or a field might be optional. Simply dropping rows with missing values wastes data; filling with the column mean/median ignores relationships between features.
+
+`KNNImputer` uses the K-Nearest Neighbours algorithm to estimate missing values. For each row with a missing value in feature `X`, it finds the `k` most similar rows (based on Euclidean distance across all *non-missing* features), then fills the missing value with the average of those `k` rows' values for feature `X`.
+
+With `n_neighbors=3`, each missing value is estimated from the 3 most similar rows. With `weights="uniform"`, all 3 neighbours contribute equally. This is a powerful technique because it respects the correlation structure of the dataset — a phishing URL that is similar to known phishing URLs in 30 other features will have its missing 31st feature imputed based on those similar phishing URLs.
+
+```python
+def initiate_data_transformation(self):
+    train_df = DataTransformation.read_data(self.data_validation_artifact.valid_train_file_path)
+    test_df = DataTransformation.read_data(self.data_validation_artifact.valid_test_file_path)
+
+    # Feature and Target Separation
+    input_feature_train_df = train_df.drop(columns=[TARGET_COLUMN], axis=1)
+    target_feature_train_df = train_df[TARGET_COLUMN]
+    input_feature_test_df = test_df.drop(columns=[TARGET_COLUMN], axis=1)
+    target_feature_test_df = test_df[TARGET_COLUMN]
+```
+
+`TARGET_COLUMN = "Result"` is the label column. Separating features (`X`) from labels (`y`) before applying transformations is mandatory: you must never transform the target column with the same pipeline you use for features. The imputer should only learn patterns from input features.
+
+```python
+    # Target Label Cleaning
+    target_feature_train_df = target_feature_train_df.replace(-1, 0)
+    target_feature_test_df = target_feature_test_df.replace(-1, 0)
+```
+
+The phishing dataset originally uses `-1` for "legitimate" and `1` for "phishing". Binary classification algorithms in sklearn typically expect labels `{0, 1}`. Converting `-1 → 0` standardises the target space, preventing issues with certain loss functions and metrics that assume non-negative labels.
+
+```python
+    # Fit and Transform
+    preprocessor = self.get_data_transformer_object()
+    preprocessor_object = preprocessor.fit(input_feature_train_df)
+    transformed_input_train_feature = preprocessor_object.transform(input_feature_train_df)
+    transformed_input_test_feature = preprocessor_object.transform(input_feature_test_df)
+```
+
+`preprocessor.fit(input_feature_train_df)` **learns** the KNN structure from the training data — it builds the internal KD-tree or ball-tree used to find neighbours efficiently.
+
+`preprocessor_object.transform(input_feature_train_df)` applies the learned imputation to the training features.
+
+`preprocessor_object.transform(input_feature_test_df)` applies the **same** learned imputation to the test features. This is critical: the imputer must use the training data's neighbourhood structure to impute the test data. Fitting a separate imputer on test data would be data leakage.
+
+```python
+    # Data Recombination
+    train_arr = np.c_[
+        transformed_input_train_feature,
+        np.array(target_feature_train_df)
+    ]
+    test_arr = np.c_[
+        transformed_input_test_feature,
+        np.array(target_feature_test_df)
+    ]
+```
+
+`np.c_[...]` performs **column-wise concatenation** (the `c_` stands for "column stack"). It stacks the 2D transformed feature matrix and the 1D target array side-by-side, producing a single matrix where the last column is the label. This format is what `save_numpy_array_data()` stores as `.npy` files.
+
+```python
+    # Save transformed arrays and preprocessor
+    save_numpy_array_data(self.data_transformation_config.transformed_train_file_path, array=train_arr)
+    save_numpy_array_data(self.data_transformation_config.transformed_test_file_path, array=test_arr)
+    save_object(self.data_transformation_config.transformed_object_file_path, preprocessor_object)
+```
+
+Saving the `preprocessor_object` as a `.pkl` file is essential. At prediction time, incoming data must be transformed in **exactly the same way** as the training data — same imputation strategy, same fitted parameters. By saving and loading this object at inference time, we guarantee consistency between training and serving.
+
+---
+
+### `networksecurity/components/model_trainer.py` — Stage 4: Model Training with MLflow
+
+This is the core ML stage. It evaluates multiple classification algorithms, tunes hyperparameters, selects the best model, and logs everything to MLflow/DagHub.
+
+```python
+def train_model(self, x_train, y_train):
+    models = {
+        "Random Forest": RandomForestClassifier(verbose=1),
+        "Decision Tree": DecisionTreeClassifier(),
+        "Gradient Boosting": GradientBoostingClassifier(verbose=1),
+        "Logistic Regression": LogisticRegression(verbose=1),
+        "AdaBoost": AdaBoostClassifier(),
+    }
+
+    params = {
+        "Decision Tree": {
+            'criterion': ['gini', 'entropy', 'log_loss'],
+        },
+        "Random Forest": {
+            'n_estimators': [8, 16, 32, 128, 256]
+        },
+        "Gradient Boosting": {
+            'learning_rate': [.1, .01, .05, .001],
+            'subsample': [0.6, 0.7, 0.75, 0.85, 0.9],
+            'n_estimators': [8, 16, 32, 64, 128, 256]
+        },
+        "Logistic Regression": {},
+        "AdaBoost": {
+            'learning_rate': [.1, .01, 0.5, 0.001],
+            'n_estimators': [8, 16, 32, 64, 128, 256]
+        }
+    }
+
+    model_report: dict = evaluate_models(
+        X_train=x_train, y_train=y_train,
+        X_test=x_test, y_test=y_test,
+        models=models, param=params
+    )
+```
+
+**What each algorithm does and why it is included:**
+
+**Decision Tree** — Builds a tree of if-else rules on features (e.g., "if URL length > 75 AND contains '@' symbol → phishing"). Simple to interpret, prone to overfitting on its own, but useful as a baseline and for feature importance analysis. The `criterion` hyperparameter controls how the tree chooses splits: `gini` (Gini Impurity) and `entropy` (Information Gain) are mathematically different impurity measures but often produce similar trees; `log_loss` is newer and treats splits as probability estimates.
+
+**Random Forest** — An ensemble of many Decision Trees, each trained on a random subset of training rows (bagging) and a random subset of features at each split. Final prediction is the majority vote across all trees. Random subsets reduce variance compared to a single tree. `n_estimators` controls how many trees to grow (more trees = more stable predictions, more compute time).
+
+**Gradient Boosting** — Builds trees sequentially where each new tree specifically targets the residual errors of the previous ensemble. The `learning_rate` controls how much each new tree's contribution is shrunk — lower rates require more trees (`n_estimators`) but generalise better. `subsample < 1.0` means each tree is trained on a random fraction of the data (Stochastic Gradient Boosting), which further reduces overfitting. Gradient Boosting is frequently the top performer on tabular classification tasks.
+
+**Logistic Regression** — A linear model that models the log-odds of the probability of phishing as a linear combination of features. Fast to train, highly interpretable, works well when the decision boundary is approximately linear. Included as a strong linear baseline.
+
+**AdaBoost (Adaptive Boosting)** — An earlier boosting method that reweights training samples — misclassified samples get higher weights in the next iteration, forcing subsequent classifiers to focus on hard examples. `learning_rate` shrinks the contribution of each classifier.
+
+```python
+def evaluate_models(X_train, y_train, X_test, y_test, models, param):
+    report = {}
+    for i in range(len(list(models))):
+        model = list(models.values())[i]
+        para = param[list(models.keys())[i]]
+
+        gs = GridSearchCV(model, para, cv=3)
+        gs.fit(X_train, y_train)
+        model.set_params(**gs.best_params_)
+        model.fit(X_train, y_train)
+
+        y_train_pred = model.predict(X_train)
+        y_test_pred = model.predict(X_test)
+
+        train_model_score = r2_score(y_train, y_train_pred)
+        test_model_score = r2_score(y_test, y_test_pred)
+        report[list(models.keys())[i]] = test_model_score
+    return report
+```
+
+**GridSearchCV — Hyperparameter Tuning Explained:**
+
+`GridSearchCV(model, param_grid, cv=3)` performs an exhaustive search over every combination of hyperparameter values in `param_grid`. For example, for Gradient Boosting with 4 `learning_rate` values × 5 `subsample` values × 6 `n_estimators` values = **120 combinations**. For each combination, it runs **3-fold cross-validation**: splits the training data into 3 equal parts, trains on 2 and validates on 1, repeats 3 times (rotating which part is the validation set), then averages the 3 scores. So Gradient Boosting alone runs 120 × 3 = **360 model fits** just during hyperparameter search. This exhaustive approach finds the best parameter combination at the cost of significant compute time.
+
+`gs.best_params_` is a dict of the winning hyperparameter values. `model.set_params(**gs.best_params_)` applies those values to the model, and `model.fit(X_train, y_train)` trains the final version on the complete training set (not just 2/3 of it as in CV).
+
+```python
+    # Find the best model
+    best_model_score = max(sorted(model_report.values()))
+    best_model_name = list(model_report.keys())[
+        list(model_report.values()).index(best_model_score)
+    ]
+    best_model = models[best_model_name]
+
+    if best_model_score < MODEL_TRAINER_EXPECTED_SCORE:
+        raise NetworkSecurityException("No best model found")
+```
+
+`MODEL_TRAINER_EXPECTED_SCORE = 0.6` is a quality gate. If even the best model scores below 0.6, the pipeline raises an exception rather than deploying a poor model. This protects production from silent model degradation.
+
+```python
+    # Overfitting / Underfitting check
+    if abs(train_metric.f1_score - test_metric.f1_score) > MODEL_TRAINER_OVER_FITTING_UNDER_FITTING_THRESHOLD:
+        raise NetworkSecurityException("Model is overfitting or underfitting")
+```
+
+`MODEL_TRAINER_OVER_FITTING_UNDER_FITTING_THRESHOLD = 0.05` means if the F1 score on training data is more than 5 percentage points higher than on test data, the model is considered overfitted (memorised training data rather than learned generalisable patterns). Conversely, if both scores are low, the model is underfitting. Either condition triggers an exception.
+
+```python
+def track_mlflow(self, best_model, classificationmetric):
+    with mlflow.start_run():
+        f1_score = classificationmetric.f1_score
+        precision_score = classificationmetric.precision_score
+        recall_score = classificationmetric.recall_score
+
+        mlflow.log_metric("f1_score", f1_score)
+        mlflow.log_metric("precision", precision_score)
+        mlflow.log_metric("recall", recall_score)
+        mlflow.sklearn.log_model(best_model, "model")
+```
+
+**MLflow Experiment Tracking:**
+
+`mlflow.start_run()` begins a new tracked experiment run. Every metric logged inside this context manager (`mlflow.log_metric()`) is stored in the `mlflow.db` SQLite database locally, and optionally pushed to DagHub's remote tracking server.
+
+**Why track these specific metrics?**
+
+**F1 Score** = `2 × (Precision × Recall) / (Precision + Recall)`. The harmonic mean of precision and recall. In phishing detection, both false positives (blocking legitimate sites) and false negatives (allowing phishing) are costly, so F1 provides a balanced single-number summary.
+
+**Precision** = `True Positives / (True Positives + False Positives)`. Of all URLs the model flagged as phishing, what fraction actually were phishing? Low precision means too many legitimate sites are incorrectly blocked.
+
+**Recall** = `True Positives / (True Positives + False Negatives)`. Of all actual phishing URLs, what fraction did the model catch? Low recall means dangerous phishing URLs are slipping through.
+
+```python
+import dagshub
+dagshub.init(repo_owner='BikashBIOS', repo_name='Network-Security', mlflow=True)
+```
+
+DagHub is a platform for ML experiment tracking that integrates with MLflow. By initialising DagHub here, every `mlflow.log_metric()` call is mirrored to your DagHub repository's Experiments tab. You can then compare runs from different hyperparameter configurations side-by-side with interactive charts, filter by metric value, and visually identify the best model.
+
+**To view experiments:**
+```bash
+mlflow ui   # opens http://localhost:5000 for local tracking
+```
+Or navigate to your DagHub repository → Experiments tab.
+
+---
+
+### `networksecurity/utils/ml_utils/metric/classification_metric.py` — Metrics
+
+```python
+def get_classification_score(y_true, y_pred) -> ClassificationMetricArtifact:
+    model_f1_score = f1_score(y_true, y_pred)
+    model_recall_score = recall_score(y_true, y_pred)
+    model_precision_score = precision_score(y_true, y_pred)
+    classification_metric = ClassificationMetricArtifact(
+        f1_score=model_f1_score,
+        precision_score=model_precision_score,
+        recall_score=model_recall_score
+    )
+    return classification_metric
+```
+
+All three sklearn metric functions (`f1_score`, `recall_score`, `precision_score`) default to binary classification mode, which is correct for this project since `Result` is `0` or `1`. The results are packaged into the `ClassificationMetricArtifact` dataclass for structured downstream usage.
+
+---
+
+### `networksecurity/utils/ml_utils/model/estimator.py` — NetworkModel Wrapper
+
+```python
+class NetworkModel:
+    def __init__(self, preprocessor, model):
+        try:
+            self.preprocessor = preprocessor
+            self.model = model
+        except Exception as e:
+            raise NetworkSecurityException(e, sys)
+
+    def predict(self, x):
+        try:
+            x_transform = self.preprocessor.transform(x)
+            y_hat = self.model.predict(x_transform)
+            return y_hat
+        except Exception as e:
+            raise NetworkSecurityException(e, sys)
+```
+
+`NetworkModel` bundles the **fitted preprocessor** and the **trained model** into a single object. This is the object that gets serialised to `final_model/model.pkl` and loaded at inference time.
+
+`self.preprocessor.transform(x)` applies the same KNN imputation that was fitted on training data to the incoming prediction data. This guarantees that missing values in new data are handled identically to how they were handled during training.
+
+`self.model.predict(x_transform)` passes the transformed features through the best ML model to produce predictions. The `y_hat` notation is the ML convention for "predicted y values" (as opposed to `y` for true labels).
+
+---
+
+### `networksecurity/pipeline/training_pipeline.py` — Full Orchestrator
+
+```python
+class TrainingPipeline:
+    def __init__(self):
+        self.training_pipeline_config = TrainingPipelineConfig()
+
+    def start_data_ingestion(self) -> DataIngestionArtifact:
+        data_ingestion_config = DataIngestionConfig(self.training_pipeline_config)
+        data_ingestion = DataIngestion(data_ingestion_config)
+        data_ingestion_artifact = data_ingestion.initiate_data_ingestion()
+        return data_ingestion_artifact
+
+    def start_data_validation(self, data_ingestion_artifact: DataIngestionArtifact):
+        data_validation_config = DataValidationConfig(self.training_pipeline_config)
+        data_validation = DataValidation(data_ingestion_artifact, data_validation_config)
+        data_validation_artifact = data_validation.initiate_data_validation()
+        return data_validation_artifact
+
+    def start_data_transformation(self, data_validation_artifact: DataValidationArtifact):
+        data_transformation_config = DataTransformationConfig(self.training_pipeline_config)
+        data_transformation = DataTransformation(data_validation_artifact, data_transformation_config)
+        data_transformation_artifact = data_transformation.initiate_data_transformation()
+        return data_transformation_artifact
+
+    def start_model_trainer(self, data_transformation_artifact: DataTransformationArtifact):
+        model_trainer_config = ModelTrainerConfig(self.training_pipeline_config)
+        model_trainer = ModelTrainer(model_trainer_config, data_transformation_artifact)
+        model_trainer_artifact = model_trainer.initiate_model_trainer()
+        return model_trainer_artifact
+
+    def sync_artifact_dir_to_s3(self):
+        aws_bucket_url = f"s3://{TRAINING_BUCKET_NAME}/artifact/{self.training_pipeline_config.timestamp}"
+        self.s3_sync.sync_folder_to_s3(folder=self.training_pipeline_config.artifact_dir, aws_bucket_url=aws_bucket_url)
+
+    def sync_saved_model_dir_to_s3(self):
+        aws_bucket_url = f"s3://{TRAINING_BUCKET_NAME}/final_model/{self.training_pipeline_config.timestamp}"
+        self.s3_sync.sync_folder_to_s3(folder=MODEL_TRAINER_TRAINED_MODEL_DIR, aws_bucket_url=aws_bucket_url)
+
+    def run_pipeline(self) -> ModelTrainerArtifact:
+        data_ingestion_artifact = self.start_data_ingestion()
+        data_validation_artifact = self.start_data_validation(data_ingestion_artifact)
+        data_transformation_artifact = self.start_data_transformation(data_validation_artifact)
+        model_trainer_artifact = self.start_model_trainer(data_transformation_artifact)
+        self.sync_artifact_dir_to_s3()
+        self.sync_saved_model_dir_to_s3()
+        return model_trainer_artifact
+```
+
+`run_pipeline()` is the master orchestration function. Each stage's output artifact is automatically passed as the input to the next stage. This **artifact chaining** is the design pattern that makes the pipeline robust: each stage only knows about its own config and the upstream artifact, not the details of any other stage.
+
+After training completes, `sync_artifact_dir_to_s3()` uploads the entire `Artifacts/` folder (with all intermediate data, drift reports, and transformed arrays) to S3 under a timestamped key. `sync_saved_model_dir_to_s3()` uploads just the final model files. This ensures artifacts are preserved in the cloud even if the local EC2 instance is terminated.
+
+---
+
+### `main.py` — Manual Pipeline Runner
+
+```python
+if __name__ == '__main__':
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
+
+    trainingpipelineconfig = TrainingPipelineConfig()
+    dataingestionconfig = DataIngestionConfig(trainingpipelineconfig)
+    data_ingestion = DataIngestion(dataingestionconfig)
+    dataingestionartifact = data_ingestion.initiate_data_ingestion()
+    # ... continues through all 4 stages manually
+```
+
+`sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')` explicitly sets the console output encoding to UTF-8. This prevents `UnicodeEncodeError` crashes on Windows systems when the pipeline logs contain non-ASCII characters (common with progress bars or special symbols in dependency libraries).
+
+`main.py` runs the same four pipeline stages as `training_pipeline.py`'s `run_pipeline()`, but calls each one individually. This is useful for **debugging** — you can comment out stages below the one you're testing and inspect the artifact output at each step without re-running the full pipeline.
+
+**To run:**
+```bash
+python main.py
+```
+
+---
+
+### `app.py` — FastAPI Web Server
+
+```python
+import certifi
+ca = certifi.where()
+mongo_db_url = os.getenv("MONGO_URL_KEY")
+client = pymongo.MongoClient(mongo_db_url, tlsCAFile=ca)
+database = client[DATA_INGESTION_DATABASE_NAME]
+collection = database[DATA_INGESTION_COLLECTION_NAME]
+```
+
+Establishes a persistent MongoDB connection at server startup. `tlsCAFile=ca` enables TLS certificate verification for the encrypted MongoDB Atlas connection. The `database` and `collection` objects are kept as module-level globals — connection pooling means this single `MongoClient` is reused across all requests without creating a new connection per request.
+
+```python
+app = FastAPI()
+origins = ["*"]
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+```
+
+`CORSMiddleware` (Cross-Origin Resource Sharing) is required when a frontend hosted at one domain (e.g., `http://yourfrontend.com`) makes API calls to a backend at a different domain or port (e.g., `http://your-ec2-ip:8000`). `origins = ["*"]` permits any origin — appropriate for development; in production you would restrict this to your specific frontend domain.
+
+```python
+@app.get("/", tags=["authentication"])
+async def index():
+    return RedirectResponse(url="/docs")
+```
+
+The root route redirects to `/docs`, FastAPI's auto-generated **Swagger UI** — an interactive browser-based API testing page built from your route definitions. No manual documentation writing required.
+
+```python
+@app.get("/train")
+async def train_route():
+    try:
+        train_pipeline = TrainingPipeline()
+        train_pipeline.run_pipeline()
+        return Response("Training is successful")
+    except Exception as e:
+        raise NetworkSecurityException(e, sys)
+```
+
+Clicking "Execute" on the `/train` endpoint in the Swagger UI triggers the complete 4-stage ML pipeline — data ingestion from MongoDB, validation, KNN transformation, multi-model training with GridSearchCV, MLflow logging, and S3 sync — all from a single HTTP GET request.
+
+```python
+templates = Jinja2Templates(directory="./templates")
+
+@app.post("/predict")
+async def predict_route(request: Request, file: UploadFile = File(...)):
+    df = pd.read_csv(file.file)
+    preprocesor = load_object("final_model/preprocessor.pkl")
+    final_model = load_object("final_model/model.pkl")
+    network_model = NetworkModel(preprocessor=preprocesor, model=final_model)
+    y_pred = network_model.predict(df)
+    df['predicted_column'] = y_pred
+    os.makedirs('prediction_output', exist_ok=True)
+    df.to_csv('prediction_output/output.csv', index=False)
+    table_html = df.to_html(classes='table table-striped')
+    return templates.TemplateResponse("tables.html", {"request": request, "table": table_html})
+```
+
+`UploadFile = File(...)` tells FastAPI to accept a multipart file upload. The `...` (Ellipsis) marks the field as required.
+
+`load_object("final_model/preprocessor.pkl")` deserialises the `KNNImputer` pipeline that was fitted and saved during training. `load_object("final_model/model.pkl")` deserialises the best sklearn classifier. Critically, these are the same fitted objects from training — the imputer's learned neighbour structure and the model's learned weights are preserved exactly.
+
+`df.to_html(classes='table table-striped')` converts the entire prediction DataFrame into an HTML `<table>` string, applying Bootstrap CSS classes for styled alternating-row colouring. `Jinja2Templates.TemplateResponse` injects this HTML string into `tables.html`'s `{{ table }}` placeholder and returns the fully rendered HTML page.
+
+**To run locally:**
+```bash
+uvicorn app:app --reload
+# Opens at http://127.0.0.1:8000
+# Go to http://127.0.0.1:8000/docs for Swagger UI
+```
+
+---
+
+### `Dockerfile` — Container Definition
+
+```dockerfile
+FROM python:3.10-slim-bullseye
+WORKDIR /app
+COPY . /app
+RUN apt update -y && apt install awscli -y
+RUN apt-get update && pip install -r requirements.txt
+CMD ["python3", "app.py"]
+```
+
+`FROM python:3.10-slim-bullseye` starts from an official Python 3.10 image based on Debian Bullseye ("slim" removes unnecessary packages, reducing the image size from ~1GB to ~150MB).
+
+`WORKDIR /app` sets the working directory inside the container. All subsequent `COPY`, `RUN`, and `CMD` instructions execute relative to `/app`.
+
+`COPY . /app` copies the entire project directory (everything not in `.dockerignore`) into the container at `/app`.
+
+`RUN apt install awscli -y` installs the AWS CLI inside the container, enabling the S3 sync functions in `training_pipeline.py` to work when the container runs on EC2.
+
+`CMD ["python3", "app.py"]` is the default command that runs when the container starts. It launches the FastAPI server via `app.py`'s `if __name__ == "__main__": app_run(app, host="0.0.0.0", port=8000)`. Using `host="0.0.0.0"` makes the server bind to all network interfaces, which is required for the EC2 instance's public IP to reach the container.
+
+---
+
+## 🚀 Running the Project Locally
+
+```bash
+# Step 1 — Activate environment and install dependencies
+source venv/bin/activate
+pip install -r requirements.txt
+
+# Step 2 — Push phishing data to MongoDB (only needed once)
+python push_data.py
+
+# Step 3 — Start the FastAPI server
+uvicorn app:app --reload
+
+# Step 4 — Open in browser
+# http://127.0.0.1:8000/docs
+```
+
+**Training:**
+1. Go to `/train` in Swagger UI → Click **Try it out** → Click **Execute**
+2. Watch the terminal — the full pipeline runs: MongoDB pull → validation → KNN transformation → GridSearchCV across 5 models → MLflow logging
+3. After completion: `final_model/model.pkl` and `final_model/preprocessor.pkl` are saved
+4. A success response appears in the browser
+
+**Prediction:**
+1. Go to `/predict` in Swagger UI → Click **Try it out**
+2. Upload `valid_data/test.csv`
+3. Click **Execute**
+4. The response renders an HTML table with a new `predicted_column` added
+5. `prediction_output/output.csv` is also saved locally
+
+---
+
+## ☁️ AWS Setup — S3, ECR & EC2 Deployment
+
+### Step 1 — Configure AWS CLI
+
+```bash
+# Install AWS CLI (download from aws.amazon.com/cli)
+aws configure
+# Enter: Access Key ID, Secret Access Key, Region (e.g. ap-south-1), Output format (json)
+```
+
+**Create an IAM User with Admin Access:**
+
+1. AWS Console → IAM → Users → Create User (`testsecurity`)
+2. Attach Policy: `AdministratorAccess`
+3. Security Credentials → Create Access Key → Select CLI → Copy Key ID and Secret
+
+### Step 2 — Create S3 Bucket
+
+1. AWS Console → S3 → Create Bucket
+2. Bucket name must exactly match `TRAINING_BUCKET_NAME` in `constants/training_pipeline/__init__.py`
+3. Uncheck "Block all public access" if needed for EC2 access
+
+After training, artifacts and final models are automatically pushed to:
+```
+s3://<TRAINING_BUCKET_NAME>/artifact/<timestamp>/
+s3://<TRAINING_BUCKET_NAME>/final_model/<timestamp>/
+```
+
+### Step 3 — Create ECR Repository (Docker Image Registry)
+
+1. AWS Console → ECR → Create Repository → Name it (e.g., `networksecurity`)
+2. Copy the repository URI (format: `<account_id>.dkr.ecr.<region>.amazonaws.com/networksecurity`)
+
+### Step 4 — Add GitHub Secrets
+
+Go to your GitHub repo → Settings → Secrets and Variables → Actions → Add:
+
+| Secret Name | Value |
+|---|---|
+| `AWS_ACCESS_KEY_ID` | Your IAM access key |
+| `AWS_SECRET_ACCESS_KEY` | Your IAM secret key |
+| `AWS_REGION` | e.g. `ap-south-1` |
+| `AWS_ECR_LOGIN_URI` | ECR URI without the repo name |
+| `ECR_REPOSITORY_NAME` | e.g. `networksecurity` |
+
+### Step 5 — GitHub Actions CI/CD Pipeline (`.github/workflows/main.yaml`)
+
+The workflow has three jobs that run automatically on every push to `main`:
+
+**Job 1 — Continuous Integration:**
+Checks out code, lints, runs tests. Ensures the code is valid before building anything.
+
+**Job 2 — Continuous Delivery (Build & Push to ECR):**
+```yaml
+- name: Build, tag, and push image to Amazon ECR
+  run: |
+    docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:latest .
+    docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
+```
+Builds the Docker image from the `Dockerfile`, tags it as `latest`, and pushes to AWS ECR. After this job, the Docker image is available in your ECR repository.
+
+**Job 3 — Continuous Deployment (Pull & Run on EC2):**
+```yaml
+- name: Pull image from ECR and run
+  run: |
+    docker pull $ECR_REGISTRY/$ECR_REPOSITORY:latest
+    docker run -d -p 8080:8000 $ECR_REGISTRY/$ECR_REPOSITORY:latest
+```
+Runs on the **self-hosted runner** (your EC2 instance), pulls the latest Docker image from ECR, and starts the container, mapping EC2 port 8080 to the container's port 8000.
+
+### Step 6 — Set Up EC2 Instance
+
+1. AWS Console → EC2 → Launch Instance
+2. Name: `NetworkSecurityInstance`, AMI: Ubuntu 22.04, Instance type: `t3.micro` (free tier)
+3. Create/select a key pair, launch
+
+**Connect and install Docker on EC2:**
+```bash
+sudo apt-get update -y
+sudo apt-get upgrade -y
+curl -fsSL https://get.docker.com -o get-docker.sh
+sudo sh get-docker.sh
+sudo usermod -aG docker ubuntu
+newgrp docker
+```
+
+**Register EC2 as a GitHub Self-Hosted Runner:**
+1. GitHub Repo → Settings → Actions → Runners → New self-hosted runner → Linux
+2. Execute the 4 download/extract commands on EC2
+3. Run the config command, enter runner name as `self-hosted`
+4. Run `./run.sh` — the runner status shows as Idle in GitHub
+
+**Open EC2 Security Group Port:**
+1. EC2 → Security Groups → Edit Inbound Rules → Add Custom TCP port `8080`, source `0.0.0.0/0`
+
+**Access your deployed app:**
+```
+http://<EC2-Public-IPv4>:8080/docs
+```
+
+---
+
+## 📊 MLflow + DagHub Experiment Tracking
+
+After running `/train` (either locally or via the API), visit your DagHub repository:
+
+1. Go to [dagshub.com](https://dagshub.com) → Login with GitHub → Create repository from existing GitHub repo
+2. Navigate to the **Experiments** tab
+3. You will see each training run logged with F1, Precision, and Recall metrics for both training and test data
+4. Use the **Compare** feature to view side-by-side bar charts and scatter plots across runs
+5. The best model's parameters and metrics are logged alongside the serialised `model.pkl` artifact
+
+**To view MLflow UI locally:**
+```bash
+mlflow ui
+# Opens http://127.0.0.1:5000
+```
+
+---
+
+## 🧱 Key ML Concepts Explained
+
+**KNN Imputer** estimates missing values by finding the K most similar rows in the dataset (based on non-missing features) and averaging their value for the missing feature. This respects feature correlations better than mean/median imputation.
+
+**KS Test (Kolmogorov-Smirnov)** is a statistical test to detect whether two samples come from the same distribution. Used here to catch data drift — when live incoming data starts looking statistically different from training data, model performance degrades.
+
+**GridSearchCV** exhaustively tries every combination of specified hyperparameter values using K-fold cross-validation to find the optimal configuration for each algorithm.
+
+**Artifact Chaining** is the design pattern where each pipeline stage produces a typed output (an "artifact") that is passed directly as input to the next stage. This makes stages loosely coupled, independently testable, and easy to restart mid-pipeline.
+
+**Data Leakage Prevention** is enforced by (1) splitting train/test before any transformations, (2) fitting the imputer only on training data, and (3) applying the fitted imputer to test data — never fitting on test data.
+
+**The `preprocessor.pkl` at Serving Time** ensures that raw incoming prediction data goes through the same imputation process the model was trained on, preventing distribution mismatch between training and inference.
+
+---
+
+## 📦 Requirements
+
+| Package | Purpose |
+|---|---|
+| `scikit-learn` | KNNImputer, RandomForest, GradientBoosting, GridSearchCV, all ML algorithms |
+| `pandas` | DataFrame operations, CSV I/O |
+| `numpy` | Array operations, `.npy` file storage |
+| `pymongo[srv]` | MongoDB Atlas connection via SRV connection string |
+| `certifi` | SSL/TLS root certificates for secure MongoDB connection |
+| `python-dotenv` | Loads `.env` file into OS environment variables |
+| `mlflow` | Experiment tracking — logs metrics, parameters, model artifacts |
+| `dagshub` | Remote MLflow tracking server integrated with GitHub |
+| `dill` | Extended pickle serialisation (handles lambda functions, closures) |
+| `pyaml` | YAML file reading/writing (drift reports, schema config) |
+| `fastapi` | Asynchronous Python web framework for `/train` and `/predict` APIs |
+| `uvicorn` | ASGI server that runs FastAPI |
+| `python-multipart` | Required by FastAPI to handle `UploadFile` file uploads |
+| `setuptools` | `find_packages()` and `setup()` for packaging |
+
+---
+
+## 🗝️ Environment Variables Required
+
+| Variable | Purpose |
+|---|---|
+| `MONGO_DB_URL` | MongoDB Atlas connection string (used by `push_data.py`) |
+| `MONGO_URL_KEY` | MongoDB Atlas connection string (used by `app.py`) |
+| `AWS_ACCESS_KEY_ID` | AWS IAM access key for S3 sync |
+| `AWS_SECRET_ACCESS_KEY` | AWS IAM secret for S3 sync |
+| `AWS_REGION` | AWS region for ECR and S3 |
+
+---
+
+*Made with ❤️ by [BikashBIOS](https://github.com/BikashBIOS)*
