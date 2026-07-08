@@ -1,5 +1,6 @@
 import os
 import sys
+import pandas as pd
 
 from networksecurity.exception.exception import NetworkSecurityException 
 from networksecurity.logging.logger import logging
@@ -90,14 +91,25 @@ class ModelTrainer:
         model_report:dict=evaluate_models(X_train=X_train,y_train=y_train,X_test=x_test,y_test=y_test,
                                         models=models,param=params)
         
-        ## To get best model score from dict
-        best_model_score = max(sorted(model_report.values()))
+        logging.info(f"Model Report: {model_report}")
+        print("=== Model Comparison ===")
+        for name, score in sorted(model_report.items(), key=lambda x: x[1], reverse=True):
+            print(f"{name}: {score:.4f}")
 
-        ## To get best model name from dict
+        best_model_score = max(model_report.values())
+        best_model_name = max(model_report, key=model_report.get)
+        best_model = models[best_model_name]
 
-        best_model_name = list(model_report.keys())[
-            list(model_report.values()).index(best_model_score)
-        ]
+        logging.info(f"Best Model: {best_model_name} with score {best_model_score}")
+
+        for model_name, score in model_report.items():
+            with mlflow.start_run(run_name=f"{model_name}_comparison"):
+                mlflow.log_param("model_name", model_name)
+                mlflow.log_metric("score", score)
+
+        report_df = pd.DataFrame(list(model_report.items()), columns=["Model", "Score"])
+        report_df = report_df.sort_values("Score", ascending=False)
+        report_df.to_csv("model_comparison_report.csv", index=False)
         best_model = models[best_model_name]
         y_train_pred=best_model.predict(X_train)
 

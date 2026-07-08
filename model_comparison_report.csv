@@ -1,0 +1,6 @@
+Model,Score
+Random Forest,0.9710661910424099
+Decision Tree,0.9649402390438248
+Gradient Boosting,0.9634630659253376
+Logistic Regression,0.9352290679304898
+AdaBoost,0.9319701140385371
