@@ -1149,6 +1149,63 @@ mlflow ui
 
 ---
 
+## 📊 Results
+
+### Model Comparison — F1 Score
+
+Five classifiers were benchmarked with hyperparameter tuning (GridSearchCV) during training. Each model's F1 score was logged as a separate MLflow/Dagshub experiment run for full comparison and auditability.
+
+| Rank | Model | F1 Score |
+|:---:|---|:---:|
+| 🥇 | **Random Forest** | **0.9711** |
+| 🥈 | Decision Tree | 0.9649 |
+| 🥉 | Gradient Boosting | 0.9635 |
+| 4 | Logistic Regression | 0.9352 |
+| 5 | AdaBoost | 0.9320 |
+
+**Winning Model: Random Forest** (F1 Score: **0.9711**) — selected automatically based on the highest F1 score across all candidates.
+
+---
+
+### Experiment Tracking (MLflow + Dagshub)
+
+All 5 candidate models, plus the winning model's performance on both the training and testing splits, are tracked as separate experiment runs:
+
+- **5 comparison runs** — one per candidate model (`Random Forest_comparison`, `Decision Tree_comparison`, `Gradient Boosting_comparison`, `Logistic Regression_comparison`, `AdaBoost_comparison`), each logging `model_name` and `score`.
+- **2 train/test runs** — the winning model (Random Forest) evaluated separately on training data and testing data, logging `f1_score`, `precision`, and `recall_score`.
+
+**Random Forest — Train vs. Test Performance:**
+
+| Metric | Training Set | Testing Set |
+|---|:---:|:---:|
+| F1 Score | 0.971 | 0.992 |
+| Precision | 0.961 | 0.990 |
+| Recall | 0.982 | 0.994 |
+
+Consistently high scores across both splits (with no signs of overfitting — testing performance matches or exceeds training performance) confirm the model generalizes well to unseen data.
+
+View live experiment comparisons on [Dagshub Experiments](https://dagshub.com/BikashBIOS/Network-Security/experiments) or via the MLflow UI (`mlflow ui`).
+
+---
+
+### Captured Logs
+
+```
+[ 2026-07-08 18:40:46,119 ] 94 root - INFO - Model Report: {'Random Forest': 0.9710661910424099, 'Decision Tree': 0.9649402390438248, 'Gradient Boosting': 0.9634630659253376, 'Logistic Regression': 0.9352290679304898, 'AdaBoost': 0.9319701140385371}
+
+[ 2026-07-08 18:40:46,119 ] 103 root - INFO - Best Model: Random Forest with score 0.9710661910424099
+```
+
+---
+
+### Results
+
+Please see the Results screenshots in Results.pdf file.
+
+
+---
+
+
 ## 🧱 Key ML Concepts Explained
 
 **KNN Imputer** estimates missing values by finding the K most similar rows in the dataset (based on non-missing features) and averaging their value for the missing feature. This respects feature correlations better than mean/median imputation.
